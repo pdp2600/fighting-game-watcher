@@ -269,10 +269,10 @@ def _consolidate_orphans_into_round_start_blocks(orphaned_df, round_start_df):
 #When passed a df with a single ender type will return a list of dicts containing
 #the start/end indexes of each ender block, w/ ender data all assigned false 
 #(correct boolean values determined in the function which calls it)
-def _get_single_ender_blocks(single_ender_df, end_block_threshold):
-    ender_index_blocks = []
-    prev_index = -1
-    start_index = 0
+def _get_single_ender_blocks(single_ender_df, end_block_threshold:int)->list:
+    ender_index_blocks:list = []
+    prev_index:int = -1
+    start_index:int = 0
     last_index = list(single_ender_df.index)[-1]
     for index, row in single_ender_df.iterrows():
         if (prev_index == -1) and (index == last_index):
@@ -301,23 +301,23 @@ def _get_single_ender_blocks(single_ender_df, end_block_threshold):
 
 #Creates a list of dicts containing start/end indexes of each ender block & 
 #sets values related to type (time out being a draw detected in calling function)
-def _find_duel_end_blocks(ender_df, end_block_threshold):
+def _find_duel_end_blocks(ender_df, end_block_threshold:int)->list:
     slash_ender_df = ender_df.loc[ender_df['Ender_Slash'] > 0]
     perfect_ender_df = ender_df.loc[ender_df['Ender_Perfect'] > 0]
     double_ko_ender_df = ender_df.loc[ender_df['Ender_Double_KO'] > 0]
     times_up_ender_df = ender_df.loc[ender_df['Ender_Times_Up'] > 0]
-    all_ender_blocks_ls = []
+    all_ender_blocks:list = []
     
     if len(list(slash_ender_df.index)) > 0:
         slash_blocks = _get_single_ender_blocks(slash_ender_df, end_block_threshold)
-        all_ender_blocks_ls = all_ender_blocks_ls + slash_blocks
+        all_ender_blocks = all_ender_blocks + slash_blocks
     
     if len(list(perfect_ender_df.index)) > 0:
         perfect_blocks = _get_single_ender_blocks(perfect_ender_df, end_block_threshold)
         for i, ender in enumerate(perfect_blocks):
             perfect_blocks[i]['perfect'] = True
             
-        all_ender_blocks_ls = all_ender_blocks_ls + perfect_blocks
+        all_ender_blocks = all_ender_blocks + perfect_blocks
     
     if len(list(double_ko_ender_df.index)) > 0:
         double_ko_blocks = _get_single_ender_blocks(double_ko_ender_df, end_block_threshold)
@@ -325,21 +325,22 @@ def _find_duel_end_blocks(ender_df, end_block_threshold):
             double_ko_blocks[i]['double_ko'] = True
             double_ko_blocks[i]['draw'] = True
             
-        all_ender_blocks_ls = all_ender_blocks_ls + double_ko_blocks
+        all_ender_blocks = all_ender_blocks + double_ko_blocks
         
     if len(list(times_up_ender_df.index)) > 0:
         times_up_blocks = _get_single_ender_blocks(times_up_ender_df, end_block_threshold)
         for i, ender in enumerate(times_up_blocks):
             times_up_blocks[i]['time_out'] = True
             
-        all_ender_blocks_ls = all_ender_blocks_ls + times_up_blocks        
-    return all_ender_blocks_ls
+        all_ender_blocks = all_ender_blocks + times_up_blocks        
+    return all_ender_blocks
 
 #Seeing if there are any Draw enders linked to a time out ended round, returns
 #end index of the draw block or -1 if none are linked
-def _get_time_out_draw_block(draw_df, time_out_end, time_out_to_draw_buffer):
-    start = time_out_end + 1
-    end = start + time_out_to_draw_buffer
+def _get_time_out_draw_block(draw_df, time_out_end:int, 
+                             time_out_to_draw_buffer:int)->int:
+    start:int = time_out_end + 1
+    end:int = start + time_out_to_draw_buffer
     draw_within_buffer_df = draw_df.loc[start: end, ]
     if len(draw_within_buffer_df) == 0:
         return -1
@@ -348,44 +349,42 @@ def _get_time_out_draw_block(draw_df, time_out_end, time_out_to_draw_buffer):
 
 #Finds the round ender blocks by index & seconds, as well as different round end
 #properties based on the ender
-def _round_end_processing(data_for_agg_df, agg_config_dict):
+def _round_end_processing(data_for_agg_df, agg_config:dict):
     ender_detected_df = data_for_agg_df.loc[(data_for_agg_df['Ender_Slash'] > 0.49) | 
                                             (data_for_agg_df['Ender_Double_KO'] > 0.49) | 
                                             (data_for_agg_df['Ender_Perfect'] > 0.49) | 
                                             (data_for_agg_df['Ender_Times_Up'] > 0.49)]
-
     draw_detected_df = data_for_agg_df.loc[data_for_agg_df.Ender_Draw > 0]
     round_end_df = pd.DataFrame({})
-   
-    ender_index_blocks_ls = _find_duel_end_blocks(ender_detected_df, 
-                                                   agg_config_dict[
-                                                       'ender_block_index_threshold'])
-    for end_block in ender_index_blocks_ls:
-        start = end_block['start_index']
-        end = end_block['end_index']
+    ender_index_blocks:list = _find_duel_end_blocks(ender_detected_df, 
+                                                    agg_config['ender_block_index_threshold'])
+    for end_block in ender_index_blocks:
+        start:int = end_block['start_index']
+        end:int = end_block['end_index']
+        is_draw:bool = end_block['draw']
         ender_block_df = ender_detected_df.copy()
         ender_block_df = ender_block_df.loc[start: end, ]
-        is_draw = end_block['draw']
         
         if end_block['time_out'] and (len(list(draw_detected_df.index)) > 0):
-            times_up_draw_buffer = agg_config_dict['times_up_to_draw_frame_buffer']
-            draw_block_end = _get_time_out_draw_block(draw_detected_df, 
-                                                      end, times_up_draw_buffer)            
+            times_up_draw_buffer = agg_config['times_up_to_draw_frame_buffer']
+            draw_block_end:int = _get_time_out_draw_block(draw_detected_df, end, 
+                                                          times_up_draw_buffer)            
             if draw_block_end != -1:
                 end = draw_block_end
                 is_draw = True
         
         end_dict = {'start_index': start, 'end_index': end, 
-                      'start_secs': data_for_agg_df.loc[start, 'Time_in_Secs'], 
-                      'end_secs': data_for_agg_df.loc[end, 'Time_in_Secs'],
-                      'perfect': end_block['perfect'], 
-                      'double_ko': end_block['double_ko'], 
-                      'time_out': end_block['time_out'], 'draw': is_draw
-                      }
+                    'start_secs': data_for_agg_df.loc[start, 'Time_in_Secs'], 
+                    'end_secs': data_for_agg_df.loc[end, 'Time_in_Secs'], 
+                    'perfect': end_block['perfect'], 
+                    'double_ko': end_block['double_ko'], 
+                    'time_out': end_block['time_out'], 'draw': is_draw}
         
         round_end_df = round_end_df.append(pd.DataFrame(end_dict, index = [start]), 
                                                sort=False)    
     return round_end_df
+##########
+##########End of changes May 6th 4:52pm
 
 def _merge_round_start_and_end_blocks(round_start_df, round_end_df):
     start_df = round_start_df.copy()
@@ -434,7 +433,6 @@ def _create_inconclusive_dict(cur_row_df, adj_row_df, agg_config_dict, note_str)
                                    'inconclusive_note': note_str
                                    }
     else:
-        #if the current row is an Ender
         start_secs = adj_row_df.loc[0,'end_secs'] + starter_time 
         start_index = adj_row_df.loc[0,'end_index'] + starter_index
         inconclusive_round_dict = {'start_secs': start_secs, 
@@ -474,7 +472,6 @@ def _create_invalid_dict(cur_row_df, note_str):
                         'inconclusive_note': note_str
                         }
     else:
-        #if the current row is an Ender
         invalid_dict = {'start_secs': -1, 
                         'start_index': -1, 
                         'end_secs': cur_row_df.loc[0,'end_secs'], 

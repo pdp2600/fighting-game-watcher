@@ -120,7 +120,7 @@ goldlewis_templ_imgs = {'Name': 'Goldlewis',
                                      }, 
                         'img_objs': {}
                        }
-happy_templ_imgs =  {'Name': 'Happy Chaos', 
+happy_templ_imgs =  {'Name': 'Happy_Chaos', 
                      'Min_Portrait_Match': 0.25, 
                      'Min_Win_Pose_Match': 0.3, 
                      'img_paths': {
