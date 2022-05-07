@@ -382,8 +382,6 @@ def _round_end_processing(data_for_agg_df, agg_config:dict):
                                                sort=False)    
     return round_end_df
 
-##########Start of changes May 6th 7:28pm
-##########
 def _merge_round_start_and_end_blocks(round_start_df, round_end_df):
     start_df = round_start_df.copy()
     end_df = round_end_df.copy()
@@ -550,23 +548,23 @@ def _resolve_missing_pair(cur_row_df, next_row_df, prev_row_df,
             inconl_note = "Missing Starter: Game aggregation will attempt to fill missing round info"
             return _create_inconclusive_dict(cur_row, prev_row, agg_config, 
                                              inconl_note)
-##########
-##########End of changes May 6th 7:28pm
 
+##########
+##########Start of changes May 6th 8:34pm
 #Transforms round starter & ender data into round data, attempts to resolve
 #rounds with missing starter or ender where possible & flags those instances
-def _consolidate_round_data(rounds_df, agg_config_dict):
-    index_vector_ls = list(rounds_df.index)
-    last_index = index_vector_ls[-1]
-    i = 0
-    prev_index = -1
+def _consolidate_round_data(rounds_df, agg_config:dict):
+    index_vector = list(rounds_df.index)
+    last_index:int = index_vector[-1]
+    i:int = 0
+    prev_index:int = -1
     round_data_df = pd.DataFrame({})
     prev_row_df = pd.DataFrame({})
 
-    while i < len(index_vector_ls):
-        index = index_vector_ls[i]
+    while i < len(index_vector):
+        index = index_vector[i]
         if index != last_index:
-            next_index = index_vector_ls[i+1]
+            next_index = index_vector[i+1]
             if ((rounds_df.loc[index,'block_type'] == 'Starter') and 
                 (rounds_df.loc[next_index,'block_type'] == 'Ender')):
                 round_dict = _create_valid_round_dict(rounds_df.loc[index:index,], 
@@ -574,7 +572,7 @@ def _consolidate_round_data(rounds_df, agg_config_dict):
                 round_data_df = round_data_df.append(pd.DataFrame(round_dict, 
                                                                   index = [index]))
                 #Setting previous row index to the ender row & itterating to the row after
-                prev_index = index_vector_ls[i+1]
+                prev_index = index_vector[i+1]
                 i = i + 2
             else:
                 if prev_index != -1:
@@ -582,24 +580,24 @@ def _consolidate_round_data(rounds_df, agg_config_dict):
 
                 round_dict = _resolve_missing_pair(rounds_df.loc[index:index,], 
                                                    rounds_df.loc[next_index:next_index,], 
-                                                   prev_row_df, agg_config_dict)
+                                                   prev_row_df, agg_config)
                 round_data_df = round_data_df.append(pd.DataFrame(round_dict, 
                                                                   index = [index]))
                 #April 3 Added prev_index assignment to this branch (I think I missed it)
-                prev_index = index_vector_ls[i]
+                prev_index = index_vector[i]
                 i = i + 1
         else:
             next_row_df = pd.DataFrame({})
             round_dict = _resolve_missing_pair(rounds_df.loc[index:index,], 
                                                next_row_df, prev_row_df, 
-                                               agg_config_dict)
+                                               agg_config)
             round_data_df = round_data_df.append(pd.DataFrame(round_dict, 
                                                               index = [index]))
             i = i + 1
     return round_data_df
 
 #Validate whether there are legit Duel scores equal or above the min_score 
-def _validate_duel_match_score(ggst_slice_df, min_score):
+def _validate_duel_match_score(ggst_slice_df, min_score:float)->bool:
     duel_min_data_df = ggst_slice_df.loc[((ggst_slice_df.Starter_Duel >= min_score) &
                                           ((ggst_slice_df.Starter_Number_1 > 0) |
                                            (ggst_slice_df.Starter_Number_2 > 0) |
@@ -612,12 +610,9 @@ def _validate_duel_match_score(ggst_slice_df, min_score):
 def _filter_round_start_false_positives(round_start_blocks_df, ggst_vid_data_df):
     start_blocks_df = pd.DataFrame({})
     for index, row in round_start_blocks_df.iterrows():
-        #is_high_duel_score = False
-        #ggst_slice_df = pd.DataFrame({})
-        #if (row.start_index != -1) and (row.end_index != -1):
         ggst_slice_df = ggst_vid_data_df.loc[row.start_index:row.end_index,]
-        has_high_duel_score = _validate_duel_match_score(ggst_slice_df, 0.85)
-            
+        has_high_duel_score:bool = _validate_duel_match_score(ggst_slice_df, 
+                                                              0.85)
         if bool(round_start_blocks_df.loc[index, 'Lets_Rock']):
             round_df = pd.DataFrame({'start_index': round_start_blocks_df.loc[index, 'start_index'], 
                                      'end_index': round_start_blocks_df.loc[index, 'end_index'], 
@@ -626,8 +621,6 @@ def _filter_round_start_false_positives(round_start_blocks_df, ggst_vid_data_df)
                                      'round': round_start_blocks_df.loc[index, 'round']}, 
                                     index = [index])
             start_blocks_df = start_blocks_df.append(round_df)
-            #print("Start round added with Lets Rock detected @ start index: {}".format(round_df.loc[index, 'start_index']))
-            #print("Round Number: {}".format(round_df.loc[index, 'round']))
         elif ((not bool(round_start_blocks_df.loc[index, 'Lets_Rock'])) and 
               has_high_duel_score):
             round_df = pd.DataFrame({'start_index': round_start_blocks_df.loc[index, 'start_index'], 
@@ -637,54 +630,22 @@ def _filter_round_start_false_positives(round_start_blocks_df, ggst_vid_data_df)
                                      'round': round_start_blocks_df.loc[index, 'round']}, 
                                     index = [index])
             start_blocks_df = start_blocks_df.append(round_df)
-            #print("Start round added with High duel score @ start index: {}".format(round_df.loc[index, 'start_index']))
-            #print("Round Number: {}".format(round_df.loc[index, 'round']))
         else:
             pass
-            #print("Round tossed, start_index: {}, start_sec: {}, round: {}".format(int(row.start_index), 
-            #                                                                       int(row.start_secs), 
-            #                                                                       str(row.round)))
-            #explictly not adding the ROund start block if there's no Lets rock or high duel score
     return start_blocks_df
     
-    #Implementation which just filtered for Lets Rocks
-    #expanded to above as I found a case of legit duel values & not Let's Rock after
-    #Hopefu7lly it won't mess anything up & address that case
-    """
-    duel_with_lets_rock_df = round_start_blocks_df.loc[(round_start_blocks_df.Lets_Rock)]
-    round_cols = ['start_index', 'end_index', 'start_secs', 'end_secs', 'round']
-    return duel_with_lets_rock_df[round_cols]
-    """
-    #First attempt, just filtering out round blocks without Let's Rocks
-    #If that doesn't work, complete the below which will check adjacent round numbers
-    #specifically for out of place Round_1s (2 in a row, Round_1 in between 
-    #ROund_2 & ROund_3, etc) & determine which to keep based on Lets Rock bool val
-    """
-    round_start_data_df = pd.DataFrame({})
-    if len(duel_with_lets_rock_df) == len(round_start_blocks_df):
-        return round_start_blocks_df    
-    duel_lets_rock_indexes_ls = list(duel_with_lets_rock_df.index)
-    round_start_indexes_ls = list(round_start_blocks_df.index)
-    prev_index = round_start_indexes_ls[0]
-    for index in round_start_indexes_ls[1:]:
-        if ((prev_index in ))
-        if round_start_blocks_df.loc[prev_index, 'round']
-    """  
 def _get_index_when_ui_disappears(ggst_round_df):
-    #print("First index in slice: {}".format(list(ggst_round_df.head(1).index)[0]))
     no_ui_frames_df = ggst_round_df.loc[ggst_round_df.Game_UI_Timer_Outline == 0]
     no_ui_frames_df = no_ui_frames_df.sort_index()
     first_no_timer_frame = list(no_ui_frames_df.index)[0]
-    #print("First no timer frame index: {}".format(first_no_timer_frame))
     return first_no_timer_frame
         
 def _validate_unknown_round_duration(round_blocks_df, ggst_data_df):
     verified_rounds_df = round_blocks_df.copy()
     index_ls = list(verified_rounds_df.index)
-    last_index = index_ls[-1]
-    prev_round_end_index = -1
-    #prev_round_end_secs = -1
-    index_count = 0
+    last_index:int = index_ls[-1]
+    prev_round_end_index:int = -1
+    index_count:int = 0
     while index_count < len(index_ls):
         index = index_ls[index_count]
         if bool(verified_rounds_df.loc[index, 'inconclusive_data']):
@@ -710,51 +671,50 @@ def _validate_unknown_round_duration(round_blocks_df, ggst_data_df):
                 verified_rounds_df.loc[index, 'end_index'] = next_round_start_index - 1
         
         index_count = index_count + 1
-        #prev_round_end_secs = verified_rounds_df.loc[index, 'end_secs']
         prev_round_end_index = verified_rounds_df.loc[index, 'end_index']
         
     return verified_rounds_df
+
 #Aggregates visual data extracted into game rounds (with start/end positions, 
 #round number, & extra data the ender might convey)
-def aggregate_into_rounds(ggst_vid_data_df, agg_config_dict):
-    round_start_blocks_df = _round_start_processing(ggst_vid_data_df, agg_config_dict)
+def aggregate_into_rounds(ggst_vid_data_df, agg_config:dict):
+    round_start_blocks_df = _round_start_processing(ggst_vid_data_df, agg_config)
     round_start_blocks_df = _filter_round_start_false_positives(round_start_blocks_df, 
                                                                 ggst_vid_data_df)
-    #Looking for "Lets Rock" states which weren't associated with a Duel State &
-    # & adds them as a round block (in case video doesn't show Duel before Lets Rock) 
+    #Looking for "Lets Rock" states which weren't associated with a Duel State 
+    #& adds them as a round starter block
     orphaned_lets_rocks_df = _find_orphan_lets_rocks(ggst_vid_data_df, 
                                                      round_start_blocks_df)
-    #if there are Lets Rock orphans, will add them as Round blocks sorted by index
     round_start_df = _consolidate_orphans_into_round_start_blocks(orphaned_lets_rocks_df, 
                                                                   round_start_blocks_df)
-    
-    #Figuring out where all the round ender indicators start and end, & if the round
-    #ended in a significant state
-    round_end_blocks_df = _round_end_processing(ggst_vid_data_df, agg_config_dict)
+    #Figuring out where all the round ender indicators start and end, & if the 
+    #round ended in a Perfect/Double KO/Time Out
+    round_end_blocks_df = _round_end_processing(ggst_vid_data_df, agg_config)
     round_end_blocks_df = round_end_blocks_df.sort_index(axis = 0)
 
     round_start_end_df = _merge_round_start_and_end_blocks(round_start_df, 
                                                            round_end_blocks_df)
     consolidated_rounds_df = _consolidate_round_data(round_start_end_df, 
-                                                     agg_config_dict)
+                                                     agg_config)
     consolidated_rounds_df = _validate_unknown_round_duration(consolidated_rounds_df, 
                                                               ggst_vid_data_df)
     
     return consolidated_rounds_df
 
 #Used to swap to a new undisputed max character, used to save space in calling function
-def _reset_max_char_dict(col_name, val):
-    new_max_dict = {}
-    new_max_dict[col_name] = val
+def _reset_max_char_dict(col_name:str, val:float)->dict:
+    new_max:dict = {}
+    new_max[col_name] = val
     
-    return new_max_dict
+    return new_max
 
 #Checks which character had the most matches & that there are no ties/disputed matches
-def get_character_used(ggst_slice_data_df, character_cols_ls, min_char_delta):
-    char_detected_sum_dict = {}
+def get_character_used(ggst_slice_data_df, character_cols:list, 
+                       min_char_delta:float)->str:
+    char_detected_sum:dict = {}
     for index, row in ggst_slice_data_df.iterrows():
         max_val_dict = {}        
-        for col in character_cols_ls:
+        for col in character_cols:
             char_val = ggst_slice_data_df.loc[index, col]
             if char_val > 0:
                 if len(max_val_dict) == 0:
@@ -777,33 +737,29 @@ def get_character_used(ggst_slice_data_df, character_cols_ls, min_char_delta):
         #will it be incremented, more than one, it doesn't count towards the sum
         if len(max_val_dict) == 1:
             max_key = list(max_val_dict.keys())[0]
-            if max_key in char_detected_sum_dict:
-                char_detected_sum_dict[max_key] = char_detected_sum_dict[max_key] + 1
+            if max_key in char_detected_sum:
+                char_detected_sum[max_key] = char_detected_sum[max_key] + 1
             else:
-                char_detected_sum_dict[max_key] = 1    
+                char_detected_sum[max_key] = 1    
 
-    return _verify_character_detected(char_detected_sum_dict)
+    return _verify_character_detected(char_detected_sum)
 
 #Verifies that there's a single undisputed character which was detected
-def _verify_character_detected(char_detected_dict):
-    max_key = 'Unknown'
-    #######Debug March 26th
-    #for key, val in char_detected_dict.items():
-    #    print("Verify Char Detection:")
-    #    print("key: {} Value: {}".format(key, val))
-    #######
-    if len(char_detected_dict) > 0:
-        max_key = max(char_detected_dict, key=char_detected_dict.get)
-        max_val = char_detected_dict[max_key]
-        
+def _verify_character_detected(char_detected:dict)->str:
+    max_key:str = 'Unknown'
+    if len(char_detected) > 0:
+        max_key = max(char_detected, key=char_detected.get)
+        max_val = char_detected[max_key]
         #Check to make sure there are not more than 1 key w/ the max value
-        if Counter(list(char_detected_dict.values()))[max_val] == 1:
+        if Counter(list(char_detected.values()))[max_val] == 1:
             max_key = max_key.replace("_1P_Portrait", "") if (
                 '1P' in max_key) else max_key.replace("_2P_Portrait", "")            
         else:
             max_key = 'Unknown'
     
     return max_key
+##########End of changes May 6th 8:34pm
+##########
 
 #Player 1 & 2 Character detect: aggregate character names for frames in each round
 def extract_played_characters(ggst_vid_data_df, rounds_df, agg_config_dict):
