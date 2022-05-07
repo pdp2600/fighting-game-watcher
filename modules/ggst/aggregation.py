@@ -757,8 +757,6 @@ def _verify_character_detected(char_detected:dict)->str:
     
     return max_key
 
-##########Start of changes May 7th 11:04am
-##########
 #Player 1 & 2 Character detect: aggregate character names for frames in each round
 def extract_played_characters(ggst_vid_data_df, rounds_df, agg_config:dict):
     char_data_rounds_df = rounds_df.copy()
@@ -984,11 +982,9 @@ def _get_winner_by_tmpl(ggst_vid_data_df, round_df, agg_config:dict)->str:
         ggst_data_slice_df = ggst_vid_data_df.loc[slice_start_index:
                                                   (end_index - 1), ]        
         return _check_for_player_win_template(ggst_data_slice_df, win_min_delta)
-##########
-##########End of changes May 7th 11:04am
 
-def _get_overall_confidence(winner_via_template, winner_via_health, 
-                                   health_confidence):
+def _get_overall_confidence(winner_via_template:str, winner_via_health:str, 
+                            health_confidence:str)->str:
     if winner_via_template != 'Unknown':
         if winner_via_template == winner_via_health:
             if health_confidence == 'High':
@@ -1002,7 +998,7 @@ def _get_overall_confidence(winner_via_template, winner_via_health,
     
 #If the player win template value was found, that's the value defaulted to
 #Health can get weird for rounds where end was estimated (no ender found)
-def _consolidate_win_data(winner_via_template, winner_via_health):
+def _consolidate_win_data(winner_via_template:str, winner_via_health:str)->str:
     if (winner_via_template == 'Unknown') and (winner_via_health != 'Unknown'):
         return winner_via_health
     elif (winner_via_template != 'Unknown') and (winner_via_health == 'Unknown'):
@@ -1010,21 +1006,22 @@ def _consolidate_win_data(winner_via_template, winner_via_health):
     else:
         return winner_via_template
 
-def extract_round_winner(ggst_vid_data_df, rounds_df, agg_config_dict):
-    winner_by_health = 'Unknown'
-    winner_by_tmpl = 'Unknown'
-    confidence = None
+def extract_round_winner(ggst_vid_data_df, rounds_input_df, agg_config:dict):
+    winner_by_health:str = 'Unknown'
+    winner_by_tmpl:str = 'Unknown'
+    confidence:str = None
+    rounds_df = rounds_input_df.copy()
     
     for index, row in rounds_df.iterrows():
-        #April 5th Added None clause, since rounds w/o enders should have win checked
         if ((rounds_df.loc[index, 'draw'] == False) or 
         (rounds_df.loc[index, 'draw'] == None)):
             if rounds_df.loc[index, 'end_secs'] != -1:
                 round_df = rounds_df.loc[index:index,]
                 winner_by_health, confidence = _get_winner_by_health(ggst_vid_data_df, 
                                                                      round_df, 
-                                                                     agg_config_dict)
-                winner_by_tmpl = _get_winner_by_tmpl(ggst_vid_data_df, round_df, agg_config_dict)
+                                                                     agg_config)
+                winner_by_tmpl = _get_winner_by_tmpl(ggst_vid_data_df, round_df, 
+                                                     agg_config)
             else:
                 winner_by_health = 'Unknown'
                 winner_by_tmpl = 'Unknown'
@@ -1034,9 +1031,9 @@ def extract_round_winner(ggst_vid_data_df, rounds_df, agg_config_dict):
             rounds_df.loc[index, 'winner_via_tmplate_match'] = winner_by_tmpl
             rounds_df.loc[index, 'winner'] = _consolidate_win_data(winner_by_tmpl, 
                                                                    winner_by_health)
-            overall_confidence = _get_overall_confidence(winner_by_tmpl, 
-                                                         winner_by_health, 
-                                                         confidence)
+            overall_confidence:str = _get_overall_confidence(winner_by_tmpl, 
+                                                             winner_by_health, 
+                                                             confidence)
             rounds_df.loc[index, 'winner_confidence'] = overall_confidence
             
         else:
@@ -1056,12 +1053,12 @@ def classify_rounds_into_games(rounds_df):
 
 #Assumes there are a minimum of 2 rounds for every game, attempts to organize rounds
 #into games
-def _validate_rounds_for_games(rounds_df):
-    rounds_df = rounds_df.reset_index()
-    total_rows = len(rounds_df)
-    index = 0
-    game_count = 1
-    anomally_count = 1
+def _validate_rounds_for_games(rounds_input_df):
+    rounds_df = rounds_input_df.copy().reset_index()
+    total_rows:int = len(rounds_df)
+    index:int = 0
+    game_count:int = 1
+    anomally_count:int = 1
     games_df = pd.DataFrame({})
     anomallies_df = pd.DataFrame({})
 
@@ -1076,8 +1073,7 @@ def _validate_rounds_for_games(rounds_df):
                 games_df = _add_game_rounds_df(rounds_df.loc[index:last_round_index,], 
                                                games_df, game_count)
                 index = last_round_index + 1
-                game_count = game_count + 1
-                
+                game_count = game_count + 1                
             elif ((rounds_df.loc[index, 'round'] == 'Unknown') and 
                   (rounds_df.loc[index + 1, 'round'] == 'Round_2')):
                 last_round_index = _get_last_game_round_index(rounds_df, index)
@@ -1085,7 +1081,6 @@ def _validate_rounds_for_games(rounds_df):
                                                games_df, game_count)
                 index = last_round_index + 1
                 game_count = game_count + 1
-
             else:
                 anomallies_df = _add_anomally_round_df(rounds_df.loc[index:index,], 
                                                    anomallies_df, anomally_count)
@@ -1096,19 +1091,18 @@ def _validate_rounds_for_games(rounds_df):
                                                    anomallies_df, anomally_count)
             anomally_count = anomally_count + 1
             index = index + 1
-        #print("Validate Rounds for Games, Game(s): {} & Anomallies: {}".format(game_count, 
-        #                                                                       anomally_count))
     return games_df, anomallies_df
 
 #Verifies round index is the 3rd/final round of a game by a player winning 2 rounds
 #Doesn't address the case where there's an Unknown winner in one of the rounds
-def _is_game_with_3_rounds(rounds_df, round_index, final_round_case=False):
+def _is_game_with_3_rounds(rounds_df, round_index:int, 
+                           final_round_case:bool=False)->bool:
     #The game will be at least 2 rounds which is insured before the function call
     last_round_index = round_index
     first_round = round_index - 2
     if final_round_case:
         first_round = round_index - 3
-    #Check if any player won both of the previous found rounds, which means no other rounds
+    
     first_3_rounds_df = rounds_df.loc[first_round:last_round_index,]
     player_winner = _game_won_by(first_3_rounds_df, 2)
     if ((player_winner == 'Player 1') or (player_winner == 'Player 2')):
@@ -1118,20 +1112,19 @@ def _is_game_with_3_rounds(rounds_df, round_index, final_round_case=False):
 
 #When the potential 3rd round is Unknown, this is a check if the time gap between
 #rounds isn't above the max gap (which makes it more likely it's in the same game)
-def _is_round_gap_same_game(rounds_df, round_2_index):
-    max_gap_secs = 25
-    round_unknown_gap = (rounds_df.loc[round_2_index + 1, 'start_secs'] - 
-                         rounds_df.loc[round_2_index, 'end_secs'])
+def _is_round_gap_same_game(rounds_df, round_2_index:int)->bool:
+    max_gap_secs:int = 25
+    round_unknown_gap:int = (rounds_df.loc[round_2_index + 1, 'start_secs'] - 
+                             rounds_df.loc[round_2_index, 'end_secs'])
     return (round_unknown_gap < max_gap_secs)
 
-def _get_last_game_round_index(rounds_df, round_1_index):
+def _get_last_game_round_index(rounds_df, round_1_index:int)->int:
     #The game will be at least 2 rounds which is insured before the function call
-    last_round_index = round_1_index + 1
-    total_rows = len(rounds_df)
-    #Check if any player won both of the previous found rounds, which means no other rounds
+    last_round_index:int = round_1_index + 1
+    total_rows:int = len(rounds_df)
     first_2_rounds_df = rounds_df.loc[round_1_index:last_round_index,]
-    player_winner = _game_won_by(first_2_rounds_df, 2)
-    #April 1st Added checking confidence for any rounds being very low
+    player_winner:str = _game_won_by(first_2_rounds_df, 2)
+
     if (((player_winner == 'Player 1') or (player_winner == 'Player 2')) and 
         (len(first_2_rounds_df.loc[first_2_rounds_df['winner_confidence'] != 'Very Low'])
          == 2)):
@@ -1153,20 +1146,16 @@ def _get_last_game_round_index(rounds_df, round_1_index):
                     last_round_index = last_round_index + 1
                     return last_round_index
                 else:
-                    #May need to add more conditions for this "unknown" case
+                    #"Unknown" case, may need to add more conditions for this
                     return last_round_index
             else:
                 return last_round_index
-        #Added March 19th Addresses potential 3rd round is Unknown round number
-        ##Doesn't address if there's an Unknown winner of any round
         elif rounds_df.loc[last_round_index + 1, 'round'] == 'Unknown':
-            #April 12th add clause to check the time gap between rounds so it's not too big
             if ((total_rows > (last_round_index + 1)) and 
                 _is_game_with_3_rounds(rounds_df, last_round_index + 1) and 
                 _is_round_gap_same_game(rounds_df, last_round_index)):
                 last_round_index = last_round_index + 1
                 return last_round_index
-            #March 31st added to address case found in testament video
             elif (((last_round_index - 1) >= 0) and 
                   (rounds_df.loc[last_round_index - 1, 'round'] == 'Round_1') and 
                   (rounds_df.loc[last_round_index, 'round'] == 'Round_2') and 
@@ -1187,30 +1176,31 @@ def _get_last_game_round_index(rounds_df, round_1_index):
                 else:
                     return last_round_index
         else:
-            #May need to add more conditions for this "unknown" case
+            #"Unknown" case, may need to add more conditions for this
             return last_round_index
     else:
         return last_round_index
             
-def _game_won_by(rounds_df, rounds_to_win_int):
+def _game_won_by(rounds_df, rounds_to_win:int)->str:
     player_1_wins = len(rounds_df.loc[rounds_df.winner == 'Player 1'])
     player_2_wins = len(rounds_df.loc[rounds_df.winner == 'Player 2'])
-    if player_1_wins == rounds_to_win_int:
+    if player_1_wins == rounds_to_win:
         return 'Player 1'
-    elif player_2_wins == rounds_to_win_int:
+    elif player_2_wins == rounds_to_win:
         return 'Player 2'
     else:
         return None
 
-def _add_anomally_round_df(anomally_round_df, anomally_collection_df, anomally_num):
-    anomally_round_df = anomally_round_df.copy()
+def _add_anomally_round_df(anomally_round_input_df, anomally_collection_df, 
+                           anomally_num:int):
+    anomally_round_df = anomally_round_input_df.copy()
     index_ls = list(anomally_round_df.index)
     for index in index_ls:
         anomally_round_df.loc[index, 'anomaly_id'] = "Anomally_{}".format(anomally_num)
     return anomally_collection_df.append(anomally_round_df, sort=False)
 
-def _add_game_rounds_df(game_rounds_df, games_collection_df, game_num):
-    #game_rounds_df = game_rounds_df.copy()
+def _add_game_rounds_df(game_rounds_input_df, games_collection_df, game_num:int):
+    game_rounds_df = game_rounds_input_df.copy()
     index_ls = list(game_rounds_df.index)
     for index in index_ls:
         if game_num < 10:
@@ -1222,33 +1212,32 @@ def _add_game_rounds_df(game_rounds_df, games_collection_df, game_num):
 #From Round data classified as games, aggregates winner & character data to game level
 def aggregate_into_games(game_rounds_df, anomalous_rounds_df):
     games_ls = list(set(game_rounds_df.game_id))
+    game_index:int = 0
     game_level_df = pd.DataFrame({})
-    game_index = 0
     
     for game in games_ls:
         single_game_rounds_df = game_rounds_df.loc[game_rounds_df.game_id == game]
-        game_result_dict = _aggregate_game_result(single_game_rounds_df)
-        game_char_data_dict = _aggregate_game_characters(single_game_rounds_df)
-        single_game_data_dict = _create_game_data_dict(single_game_rounds_df, 
-                                                       game_result_dict, 
-                                                       game_char_data_dict)        
-        game_level_df = game_level_df.append(pd.DataFrame(single_game_data_dict, 
+        game_result:dict = _aggregate_game_result(single_game_rounds_df)
+        game_char_data:dict = _aggregate_game_characters(single_game_rounds_df)
+        single_game_data:dict = _create_game_data_dict(single_game_rounds_df, 
+                                                       game_result, 
+                                                       game_char_data)
+        game_level_df = game_level_df.append(pd.DataFrame(single_game_data, 
                                                           index = [game_index]), 
                                              sort=False)
         game_index = game_index + 1
-    
-    #Output to console detected anomalous or inconsistent info
+    #Output to console any detected anomalous or inconsistent results
     _print_anomalous_round_data(anomalous_rounds_df)
     _print_inconclusive_game_data(game_level_df)
 
     return game_level_df.sort_values('game_id')
 
 #If possible aggregates what the game winner & round score is based on round results
-def _aggregate_game_result(single_game_rounds_df):
+def _aggregate_game_result(single_game_rounds_df)->dict:
     rounds_df = single_game_rounds_df.reset_index()
     total_rounds = len(rounds_df)
-    #April 7th added clause in initial condition to ensure no rounds are Very Low
-    #confidence, which in that case would default to last round winner
+    #If any rounds are Very Low confidence, default to last round winner
+    #After 1st version should add more edge cases about very low confidence rounds
     if ((len(rounds_df.loc[rounds_df.winner == 'Draw']) == 0) and 
         (len(rounds_df.loc[rounds_df.winner == 'Unknown']) == 0) and
         (len(rounds_df.loc[rounds_df.winner_confidence == 'Very Low']) == 0)):
@@ -1272,28 +1261,33 @@ def _aggregate_game_result(single_game_rounds_df):
 
 #Finds rounds scores & game winner based on only having last round results
 #Works since in most cases the winner of the last round is the game winner
-def _game_result_based_on_last_round_winner(rounds_df):
+def _game_result_based_on_last_round_winner(single_game_rounds_df)->dict:
+    rounds_df = single_game_rounds_df.reset_index()
     total_rounds = len(rounds_df)
-    last_round_index = total_rounds - 1
+    last_round_index:int = total_rounds - 1
     if total_rounds == 2:
-        p1_wins = 2 if rounds_df.loc[last_round_index, 'winner'] == 'Player 1' else 0
-        p2_wins = 2 if rounds_df.loc[last_round_index, 'winner'] == 'Player 2' else 0
+        p1_wins = (2 if rounds_df.loc[last_round_index, 'winner'] == 'Player 1' 
+                     else 0)
+        p2_wins = (2 if rounds_df.loc[last_round_index, 'winner'] == 'Player 2' 
+                     else 0)
     else:
-        p1_wins = 2 if rounds_df.loc[last_round_index, 'winner'] == 'Player 1' else 1
-        p2_wins = 2 if rounds_df.loc[last_round_index, 'winner'] == 'Player 2' else 1
-    winner = rounds_df.loc[last_round_index, 'winner']
+        p1_wins = (2 if rounds_df.loc[last_round_index, 'winner'] == 'Player 1' 
+                     else 1)
+        p2_wins = (2 if rounds_df.loc[last_round_index, 'winner'] == 'Player 2' 
+                     else 1)
+    winner:str = rounds_df.loc[last_round_index, 'winner']
     return {'player_1_rounds_won': p1_wins, 'player_2_rounds_won': p2_wins, 
             'winner': winner, 'inconclusive_data': True, 
             'inconclusive_note': "Unknown or very low confidence winner of a round, winner based on last round result"}
 
 #When rounds have too many unknowns or are draws, this function itterates through
 #every round & attempts to figure out the winner or if it's a draw if possible
-def _game_results_with_draw_or_unknown_winners(rounds_df):
-    inconclusive = False
-    inconclusive_note = ""
-    player_1_wins = 0
-    player_2_wins = 0
-    winner = 'Unknown'
+def _game_results_with_draw_or_unknown_winners(rounds_df)->dict:
+    inconclusive:bool = False
+    inconclusive_note:str = ""
+    player_1_wins:int = 0
+    player_2_wins:int = 0
+    winner:str = 'Unknown'
     for index, row in rounds_df.iterrows():
         if row.winner == 'Draw':
             if (player_1_wins == 0) and (player_2_wins == 0):
@@ -1313,7 +1307,6 @@ def _game_results_with_draw_or_unknown_winners(rounds_df):
                 player_2_wins = player_2_wins + 1
     if (player_1_wins == 1) and (player_2_wins == 1):
         winner = 'Draw'
-    #added 2 rounds, 1 known winner prediction cases March 23rd
     elif len(rounds_df == 2) and (player_1_wins == 1) and (player_2_wins == 0):
         winner = 'Player 1'
         player_1_wins = 2
@@ -1331,67 +1324,67 @@ def _game_results_with_draw_or_unknown_winners(rounds_df):
 
 #Attempts to aggregrate the character data in rounds to the game level, basically
 #checking for inconsistencies like multiple P1 or P2 characters in the game's rounds
-def _aggregate_game_characters(single_game_rounds_df):
-    p1_char_count_dict = {}
-    p2_char_count_dict = {}    
+def _aggregate_game_characters(single_game_rounds_df)->dict:
+    p1_char_count:dict = {}
+    p2_char_count:dict = {}
     for index, row in single_game_rounds_df.iterrows():
-        p1_char = row.character_1P
-        p2_char = row.character_2P
+        p1_char:str = row.character_1P
+        p2_char:str = row.character_2P
         
-        if p1_char in p1_char_count_dict:
-            p1_char_count_dict[p1_char] = p1_char_count_dict[p1_char] + 1
+        if p1_char in p1_char_count:
+            p1_char_count[p1_char] = p1_char_count[p1_char] + 1
         else:
-            p1_char_count_dict[p1_char] = 1
+            p1_char_count[p1_char] = 1
         
-        if p2_char in p2_char_count_dict:
-            p2_char_count_dict[p2_char] = p2_char_count_dict[p2_char] + 1
+        if p2_char in p2_char_count:
+            p2_char_count[p2_char] = p2_char_count[p2_char] + 1
         else:
-            p2_char_count_dict[p2_char] = 1
+            p2_char_count[p2_char] = 1
     
-    p1_char_results_dict = _check_character_results(p1_char_count_dict)
-    p2_char_results_dict = _check_character_results(p2_char_count_dict)
-    is_inconclusive = (p1_char_results_dict['inconclusive_data'] or 
-                       p2_char_results_dict['inconclusive_data'])
-    inconclusive_note = ""
-    if ((p1_char_results_dict['inconclusive_note'] != "") and 
-        (p2_char_results_dict['inconclusive_note'] != "")):
-        if "in all rounds" in p1_char_results_dict['inconclusive_note']:
-            inconclusive_note = p1_char_results_dict['inconclusive_note']
-        elif "in all rounds" in p2_char_results_dict['inconclusive_note']:
-            inconclusive_note = p2_char_results_dict['inconclusive_note']
+    p1_char_results:dict = _check_character_results(p1_char_count)
+    p2_char_results:dict = _check_character_results(p2_char_count)
+    is_inconclusive:bool = (p1_char_results['inconclusive_data'] or 
+                            p2_char_results['inconclusive_data'])
+    inconclusive_note:str = ""
+    if ((p1_char_results['inconclusive_note'] != "") and 
+        (p2_char_results['inconclusive_note'] != "")):
+        if "in all rounds" in p1_char_results['inconclusive_note']:
+            inconclusive_note = p1_char_results['inconclusive_note']
+        elif "in all rounds" in p2_char_results['inconclusive_note']:
+            inconclusive_note = p2_char_results['inconclusive_note']
         else:
-            inconclusive_note = p1_char_results_dict['inconclusive_note']
-    elif (p1_char_results_dict['inconclusive_note'] != ""):
-        inconclusive_note = p1_char_results_dict['inconclusive_note']
-    elif (p2_char_results_dict['inconclusive_note'] != ""):
-        inconclusive_note = p2_char_results_dict['inconclusive_note']
+            inconclusive_note = p1_char_results['inconclusive_note']
+    elif (p1_char_results['inconclusive_note'] != ""):
+        inconclusive_note = p1_char_results['inconclusive_note']
+    elif (p2_char_results['inconclusive_note'] != ""):
+        inconclusive_note = p2_char_results['inconclusive_note']
         
-    return {'character_1P': p1_char_results_dict['character'], 
-            'character_2P': p2_char_results_dict['character'], 
+    return {'character_1P': p1_char_results['character'], 
+            'character_2P': p2_char_results['character'], 
             'inconclusive_data': is_inconclusive, 
             'inconclusive_note': inconclusive_note}
 
 #Checks for inconsistent characters in all the rounds
-def _check_character_results(char_count_dict):
-    char_result_keys_ls = list(char_count_dict.keys())
-    if len(char_result_keys_ls) == 1:
-        if char_result_keys_ls[0] != 'Unknown':
-            return {'character': char_result_keys_ls[0], 
+def _check_character_results(char_count:dict)->dict:
+    char_result_keys = list(char_count.keys())
+    if len(char_result_keys) == 1:
+        if char_result_keys[0] != 'Unknown':
+            return {'character': char_result_keys[0], 
                     'inconclusive_data': False, 'inconclusive_note': ""}
         else:
-            return {'character': char_result_keys_ls[0], 
+            return {'character': char_result_keys[0], 
                     'inconclusive_data': True, 
                     'inconclusive_note': "Unknown character in all rounds"}
     else:
-        max_count = max(char_count_dict.values())
-        max_char_ls = []
-        #itterating through each key (character name) and value (count)
-        for char, count in char_count_dict.items():
+        max_count = max(char_count.values())
+        max_char:list = []
+
+        for char, count in char_count.items():
             if count == max_count:
-                max_char_ls.append(char)
+                max_char.append(char)
         
-        if len(max_char_ls) == 1:
-            return {'character': max_char_ls[0], 
+        if len(max_char) == 1:
+            return {'character': max_char[0], 
                     'inconclusive_data': True, 
                     'inconclusive_note': "Unknown or multiple characters in some rounds"}
         else:
@@ -1402,20 +1395,21 @@ def _check_character_results(char_count_dict):
 #Creates the dictionary which is the game level data structure. Also will combine
 #game level inconsistency notes & make a note of round level inconsistencies when
 #there were no game level inconsistency flags 
-def _create_game_data_dict(single_game_rounds_df, game_result_dict, game_chars_dict):
-    games_df = single_game_rounds_df.reset_index()
-    last_index = len(games_df) - 1
-    is_inconclusive = (game_result_dict['inconclusive_data'] or 
-                       game_chars_dict['inconclusive_data'])
-    inconclusive_note = ""
-    if (game_result_dict['inconclusive_data'] and 
-        game_chars_dict['inconclusive_data']):
-        inconclusive_note = "{}, and {}".format(game_result_dict['inconclusive_note'], 
-                                                game_chars_dict['inconclusive_note'])
-    elif game_result_dict['inconclusive_data']:
-        inconclusive_note = game_result_dict['inconclusive_note']
-    elif game_chars_dict['inconclusive_data']:
-        inconclusive_note = game_chars_dict['inconclusive_note']
+def _create_game_data_dict(single_game_rounds_df, game_result:dict, 
+                           game_chars:dict)->dict:
+    games_df = single_game_rounds_df.copy().reset_index()
+    last_index:int = len(games_df) - 1
+    is_inconclusive:bool = (game_result['inconclusive_data'] or 
+                            game_chars['inconclusive_data'])
+    inconclusive_note:str = ""
+    if (game_result['inconclusive_data'] and 
+        game_chars['inconclusive_data']):
+        inconclusive_note = "{}, and {}".format(game_result['inconclusive_note'], 
+                                                game_chars['inconclusive_note'])
+    elif game_result['inconclusive_data']:
+        inconclusive_note = game_result['inconclusive_note']
+    elif game_chars['inconclusive_data']:
+        inconclusive_note = game_chars['inconclusive_note']
     else:
         inconclusive_rounds = len(games_df.loc[games_df.inconclusive_data == True])
         if inconclusive_rounds > 0:
@@ -1423,19 +1417,18 @@ def _create_game_data_dict(single_game_rounds_df, game_result_dict, game_chars_d
             inconclusive_note = "Round level inconclusive data, check round data for more details"
                 
     return {'game_id': games_df.loc[0, 'game_id'], 
-     'start_secs': games_df.loc[0, 'start_secs'], 
-     'end_secs': games_df.loc[last_index, 'end_secs'], 
-     'start_index': games_df.loc[0, 'start_index'], 
-     'end_index': games_df.loc[last_index, 'end_index'], 
-     'total_rounds': len(games_df), 
-     'character_1P': game_chars_dict['character_1P'], 
-     'character_2P': game_chars_dict['character_2P'], 
-     'winner': game_result_dict['winner'], 
-     'player_1_rounds_won': game_result_dict['player_1_rounds_won'],
-     'player_2_rounds_won': game_result_dict['player_2_rounds_won'],
-     'inconclusive_data': is_inconclusive, 
-     'inconclusive_note': inconclusive_note
-     }
+            'start_secs': games_df.loc[0, 'start_secs'], 
+            'end_secs': games_df.loc[last_index, 'end_secs'], 
+            'start_index': games_df.loc[0, 'start_index'], 
+            'end_index': games_df.loc[last_index, 'end_index'], 
+            'total_rounds': len(games_df), 
+            'character_1P': game_chars['character_1P'], 
+            'character_2P': game_chars['character_2P'], 
+            'winner': game_result['winner'], 
+            'player_1_rounds_won': game_result['player_1_rounds_won'], 
+            'player_2_rounds_won': game_result['player_2_rounds_won'], 
+            'inconclusive_data': is_inconclusive, 
+            'inconclusive_note': inconclusive_note}
 
 #Prints the anomalous round data in a readable format to the console
 def _print_anomalous_round_data(anomalous_rounds_df):
@@ -1472,15 +1465,15 @@ def _print_inconclusive_game_data(games_df):
 
 #Creates an output directory & writes the output to file as CSVs, JSON, etc.
 def create_csv_output_files(vid_data_df, games_df, game_rounds_df, 
-                            anomalous_df, vid_name='GGST_video', 
-                            create_json = False, orignal_vid = "", yt_link = ""):
+                            anomalous_df, vid_name:str='GGST_video', 
+                            create_json:bool = False, orignal_vid:str = "", 
+                            yt_link:str = "")->str:
     dt = datetime.now()
     timestamp = "{}-{}-{}_{}-{}-{}".format(dt.year, dt.month, dt.day, dt.hour, 
                                             dt.minute, dt.second)
-    new_dir = "{}_{}".format(timestamp, vid_name)
-    #cur_dir = os.curdir
-    cur_dir = os.getcwd()
-    output_dir = "{}\\output\\{}".format(cur_dir, new_dir)
+    new_dir:str = "{}_{}".format(timestamp, vid_name)
+    cur_dir:str = os.getcwd()
+    output_dir:str = "{}\\output\\{}".format(cur_dir, new_dir)
     os.makedirs(output_dir)
     vid_data_df.to_csv("{}\\Visual_detection_data_{}_{}.csv".format(output_dir, 
                                                                     vid_name, 
@@ -1501,43 +1494,38 @@ def create_csv_output_files(vid_data_df, games_df, game_rounds_df,
     return output_dir
 
 #Creates a JSON file based on the games df & nests the round data into each game
-def create_json_file(games_df, games_rounds_df, file_path, orignal_vid_file = "", 
-                     youtube_link = ""):
+def create_json_file(games_df, games_rounds_df, file_path:str, 
+                     orignal_vid_file:str = "", youtube_link:str = "")->str:
     dt = datetime.now()
     timestamp = "{}-{}-{}_{}-{}-{}".format(dt.year, dt.month, dt.day, dt.hour, 
                                             dt.minute, dt.second)
-    file_name = "Games_with_round_data_{}_{}.json".format(orignal_vid_file, 
-                                                          timestamp)
-    full_path = "{}\\{}".format(file_path, file_name)
+    file_name:str = "Games_with_round_data_{}_{}.json".format(orignal_vid_file, 
+                                                              timestamp)
+    full_path:str = "{}\\{}".format(file_path, file_name)
     
     game_ids_ls = list(games_df.game_id)
-    games_data_json_dict = {'original_vid_filename': orignal_vid_file,
+    games_data_json:dict = {'original_vid_filename': orignal_vid_file,
                             'youtube_video_link': youtube_link,
                             'games': []
                             }
     if len(game_ids_ls) > 0:
-        
         for game_id in game_ids_ls:
             game_df = games_df.loc[games_df.game_id == game_id]
             game_rounds_df = games_rounds_df.loc[games_rounds_df.game_id == game_id]
             game_dict = _create_game_dict_for_json(game_df, game_rounds_df)
-            games_data_json_dict['games'].append(game_dict)
-        #print("Just before json.dumps")
-        #games_and_rounds_json = json.dumps(games_data_json_dict)
-        #print("After json.dumps")
+            games_data_json['games'].append(game_dict)
+
         with open(full_path, 'w') as f:
-            json.dump(games_data_json_dict, f)
-            #f.write(games_and_rounds_json)
+            json.dump(games_data_json, f)
         f.close()
-        #print("Wrote to file")
         return full_path
     else:
         print("--No games in games dataframe, no JSON file created--")
         return ""
 
-def _create_game_dict_for_json(game_df, game_rounds_df):
-    game_df = game_df.reset_index()
-    rounds = []
+def _create_game_dict_for_json(game_input_df, game_rounds_df)->dict:
+    game_df = game_input_df.copy().reset_index()
+    rounds:list = []
     
     for index, row in game_rounds_df.iterrows():
         round_dict = {'round': game_rounds_df.loc[index, 'round'], 
@@ -1557,7 +1545,7 @@ def _create_game_dict_for_json(game_df, game_rounds_df):
                       }
         rounds.append(round_dict)
     
-    game_dict = {'id': game_df.loc[0, 'game_id'], 
+    game:dict = {'id': game_df.loc[0, 'game_id'], 
                  'start_secs': int(game_df.loc[0, 'start_secs']), 
                  'end_secs': int(game_df.loc[0, 'end_secs']), 
                  'start_index': int(game_df.loc[0, 'start_index']), 
@@ -1572,21 +1560,19 @@ def _create_game_dict_for_json(game_df, game_rounds_df):
                  'inconclusive_note': game_df.loc[0, 'inconclusive_note'], 
                  'rounds': rounds
                  }
-    
-    return game_dict
+    return game
 
 #Applies the scaling values based on FPS to the aggregate config values
-def convert_agg_config_vals_based_on_fps(agg_config_dict, vals_to_multiply_ls, 
-                                         vals_to_add_1, capture_fps):
-    agg_config_new_vals = agg_config_dict.copy()
-    #FPS scale which the frame buffer/threshold values were figured out, when aggregation
-    #happens for data at a different FPS, values will be scaled (min being 1 frame if 
-    #the ratio ends up < 1) as integers.
+def convert_agg_config_vals_based_on_fps(agg_config:dict, vals_to_multiply:list, 
+                                         vals_to_add_1:list, 
+                                         capture_fps:int)->dict:
+    agg_config_new_vals:dict = agg_config.copy()
+    #config values based on 4FPS, calculating the scale based on the FPS processed
     default_fps = 4
     fps_scaling = capture_fps / default_fps
 
     for key in agg_config_new_vals.keys():
-        if key in vals_to_multiply_ls:
+        if key in vals_to_multiply:
             agg_config_new_vals[key] = int(agg_config_new_vals[key] * fps_scaling)
         if key in vals_to_add_1:
             agg_config_new_vals[key] = agg_config_new_vals[key] + 1

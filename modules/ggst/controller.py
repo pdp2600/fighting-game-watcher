@@ -23,6 +23,9 @@ sys.path.insert(0, dir_path)
 import extraction as ex
 import aggregation as agg
 
+
+##########
+##########Start of changes May DD H:MMpm
 def _no_duel_number_matches(match_scores_dict:dict)-> bool:
     total_duel_num_score = match_scores_dict['Starter_Number_1']
     total_duel_num_score += match_scores_dict['Starter_Number_2']
@@ -46,6 +49,7 @@ def _create_zero_scores_frame_dict(time_in_secs:float)-> dict:
             'Ender_Double_KO': 0, 'Ender_Times_Up': 0, 'Ender_Draw': 0, 
             'Game_UI_Timer_Outline': 0
             }
+
 def _set_duel_values_to_zero(match_scores_dict:dict)-> dict:
     match_scores_dict['Starter_Duel'] = 0
     match_scores_dict['Starter_Number_1'] = 0
@@ -761,21 +765,15 @@ def layered_extract_and_aggregate_video(video_path:str, fps_val:int, config,
                                                               config.plus_one_vals_ls, 
                                                               fps_val)
     total_start = datetime.now()
-    #start_time = datetime.now()
-    #Starter & Ender template matching function
     ggst_vid_data_df = starter_ender_tmpl_scores_vid(video_path, 
                                                      config.starter_ender_img_dicts_ls, 
                                                      config.templ_img_min_val_mappings, 
                                                      new_agg_config['times_up_to_draw_frame_buffer'], 
                                                      frames_per_sec = fps_val, 
                                                      is_verbose=verbose_log)
-    #end_time = datetime.now()
-    #vid_delta = (end_time - start_time).seconds
-    #print("Round Start/End extraction processing time was {} seconds".format(vid_delta))
+
     consolidated_rounds_df = agg.aggregate_into_rounds(ggst_vid_data_df, new_agg_config)
 
-    ##Function to get data in game rounds: character portraits, timer outline & health
-    #start_time = datetime.now()
     ggst_vid_data_df = get_in_round_data(video_path, ggst_vid_data_df, 
                                          consolidated_rounds_df, 
                                          config.char_templ_img_dicts_ls, 
@@ -784,12 +782,7 @@ def layered_extract_and_aggregate_video(video_path:str, fps_val:int, config,
                                          new_agg_config['min_character_delta'],
                                          new_agg_config['health_after_ender_frame_buffer'], 
                                          is_verbose=verbose_log)
-    #end_time = datetime.now()
-    #vid_delta = (end_time - start_time).seconds
-    #print("Character Portraits/Health processing time was {} seconds".format(vid_delta))
-    
-    ##Function to check for 1P/2P WIn template match after Ender
-    #start_time = datetime.now()
+
     ggst_vid_data_df = get_player_win_template_data(video_path, ggst_vid_data_df, 
                                                     consolidated_rounds_df, 
                                                     config.round_ender_templ_imgs, 
@@ -797,9 +790,7 @@ def layered_extract_and_aggregate_video(video_path:str, fps_val:int, config,
                                                     new_agg_config['player_win_after_ender_buffer'], 
                                                     new_agg_config['player_win_frame_after_ender_start'], 
                                                     is_verbose=verbose_log)
-    #end_time = datetime.now()
-    #vid_delta = (end_time - start_time).seconds
-    #print("1P/2P WIn Template processing time was {} seconds".format(vid_delta))
+
     characters_in_rounds_df = agg.extract_played_characters(ggst_vid_data_df, 
                                                             consolidated_rounds_df, 
                                                             new_agg_config)
@@ -807,11 +798,6 @@ def layered_extract_and_aggregate_video(video_path:str, fps_val:int, config,
                                                 characters_in_rounds_df, 
                                                 new_agg_config)
     games_by_rounds_df, anomallies_df = agg.classify_rounds_into_games(round_winners_df)
-
-    ##Debugging March 25th
-    #games_by_rounds_df.to_csv("test_Mar_25th_Game_rounds.csv")
-    #anomallies_df.to_csv("test_Mar_25th_anomallies.csv")
-    ################
     
     games_agg_df = agg.aggregate_into_games(games_by_rounds_df, anomallies_df)
     games_agg_df = validate_draw_game_results(games_agg_df, games_by_rounds_df)
@@ -822,23 +808,16 @@ def layered_extract_and_aggregate_video(video_path:str, fps_val:int, config,
                                                 games_by_rounds_df, anomallies_df, 
                                                 output_name, create_json = True, 
                                                 orignal_vid = vid_filename)
-    #Video path is only the relative video path, playlist needs the full path
-    #full_vid_path = "{}{}".format(os.getcwd(), video_path)
-    playlist_round_file = create_round_based_vlc_playlist(games_by_rounds_df, 
-                                                          ggst_vid_data_df, 
-                                                          video_path, output_folder, 
-                                                          anomallies_df)
-    print("{}".format(playlist_round_file))
-    playlist_game_file = create_game_based_vlc_playlist(games_agg_df, ggst_vid_data_df, 
-                                                        video_path, output_folder, 
-                                                        anomallies_df)
-    print("{}".format(playlist_game_file))
-    chapter_file = create_round_based_yt_chapters(games_by_rounds_df, output_folder,  
-                                              anomallies_df=anomallies_df)
-    print("{}".format(chapter_file))
-    chapter_file = create_game_based_yt_chapters(games_agg_df, output_folder, 
-                                             anomallies_df=anomallies_df)
-    print("{}".format(chapter_file))
+    #For playlist creation, requires video_path to be the full path of video
+    create_round_based_vlc_playlist(games_by_rounds_df, ggst_vid_data_df, 
+                                    video_path, output_folder, anomallies_df)
+    create_game_based_vlc_playlist(games_agg_df, ggst_vid_data_df, video_path, 
+                                   output_folder, anomallies_df)
+    create_round_based_yt_chapters(games_by_rounds_df, output_folder, 
+                                   anomallies_df=anomallies_df)
+    create_game_based_yt_chapters(games_agg_df, output_folder, 
+                                  anomallies_df=anomallies_df)
+
     end_time = datetime.now()
     vid_delta = (end_time - total_start).seconds
     video_length = get_video_duration(ggst_vid_data_df)
@@ -891,23 +870,17 @@ def brute_force_extract_and_aggregate_video(video_path:str, fps_val:int, config,
                                                 games_by_rounds_df, anomallies_df, 
                                                 output_name, create_json = True, 
                                                 orignal_vid = vid_filename)
-    #Video path is only the relative video path, playlist needs the full path
+    #For playlist creation, requires video_path to be the full path of video
     full_vid_path = "{}{}".format(os.getcwd(), video_path)
-    playlist_round_file = create_round_based_vlc_playlist(games_by_rounds_df, 
-                                                          ggst_vid_data_df, 
-                                                          full_vid_path, output_folder, 
-                                                          anomallies_df)
-    print("{}".format(playlist_round_file))
-    playlist_game_file = create_game_based_vlc_playlist(games_agg_df, ggst_vid_data_df, 
-                                                        full_vid_path, output_folder, 
-                                                        anomallies_df)
-    print("{}".format(playlist_game_file))
-    chapter_file = create_round_based_yt_chapters(games_by_rounds_df, output_folder,  
-                                              anomallies_df=anomallies_df)
-    print("{}".format(chapter_file))
-    chapter_file = create_game_based_yt_chapters(games_agg_df, output_folder, 
-                                             anomallies_df=anomallies_df)
-    print("{}".format(chapter_file))
+    create_round_based_vlc_playlist(games_by_rounds_df, ggst_vid_data_df, 
+                                    full_vid_path, output_folder, anomallies_df)
+    create_game_based_vlc_playlist(games_agg_df, ggst_vid_data_df, 
+                                   full_vid_path, output_folder, anomallies_df)
+    create_round_based_yt_chapters(games_by_rounds_df, output_folder, 
+                                   anomallies_df=anomallies_df)
+    create_game_based_yt_chapters(games_agg_df, output_folder, 
+                                  anomallies_df=anomallies_df)
+
     return output_folder
 
 
