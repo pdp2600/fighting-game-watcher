@@ -254,8 +254,6 @@ def load_match_csv_into_dataframe(csv_path:str):
     vid_data_df = vid_data_df.drop(['index'], axis='columns')
     return vid_data_df
 
-##########Start of changes May 6th 4:52pm
-##########
 #When a Lets Rock isn't found to be associated with a Duel, assumes the Duel
 #is missing, & the Lets Rock is the start of the round. Weirdness can happen
 #if there are valid Duel/Lets Rock pairs, but the Lets Rock is outside the threshold
@@ -383,9 +381,9 @@ def _round_end_processing(data_for_agg_df, agg_config:dict):
         round_end_df = round_end_df.append(pd.DataFrame(end_dict, index = [start]), 
                                                sort=False)    
     return round_end_df
-##########
-##########End of changes May 6th 4:52pm
 
+##########Start of changes May 6th 7:28pm
+##########
 def _merge_round_start_and_end_blocks(round_start_df, round_end_df):
     start_df = round_start_df.copy()
     end_df = round_end_df.copy()
@@ -405,92 +403,85 @@ def _merge_round_start_and_end_blocks(round_start_df, round_end_df):
     
     return all_blocks_df
     
-def _create_inconclusive_dict(cur_row_df, adj_row_df, agg_config_dict, note_str):
-    starter_index = agg_config_dict['missing_starter_index_value']
-    ender_index = agg_config_dict['missing_ender_index_value']
-    starter_time = agg_config_dict['missing_starter_secs_value']
-    ender_time = agg_config_dict['missing_ender_secs_value']
-    inconclusive_round_dict = {}
+def _create_inconclusive_dict(cur_row_df, adj_row_df, agg_config:dict, 
+                              note:str)->dict:
+    starter_index:int = agg_config['missing_starter_index_value']
+    ender_index:int = agg_config['missing_ender_index_value']
+    starter_time:int = agg_config['missing_starter_secs_value']
+    ender_time:int = agg_config['missing_ender_secs_value']
+    inconclusive_round:dict = {}
     if cur_row_df.loc[0,'block_type'] == 'Starter':
         end_secs = adj_row_df.loc[0,'start_secs'] - ender_time 
         end_index = adj_row_df.loc[0,'start_index'] - ender_index
-        inconclusive_round_dict = {'start_secs': cur_row_df.loc[0,'start_secs'], 
-                                   'start_index': cur_row_df.loc[0,'start_index'], 
-                                   'end_secs': end_secs, 
-                                   'end_index': end_index, 
-                                   'round': cur_row_df.loc[0,'round'], 
-                                   'winner': 'Unknown', 
-                                   'winner_via_health': 'Unknown', 
-                                   'winner_via_tmplate_match': 'Unknown', 
-                                   'winner_confidence': None, 
-                                   'character_1P': 'Unknown', 
-                                   'character_2P': 'Unknown', 
-                                   'perfect': None, 
-                                   'double_ko': None, 
-                                   'time_out': None, 
-                                   'draw': None, 
-                                   'inconclusive_data': True, 
-                                   'inconclusive_note': note_str
-                                   }
+        inconclusive_round = {'start_secs': cur_row_df.loc[0,'start_secs'], 
+                              'start_index': cur_row_df.loc[0,'start_index'], 
+                              'end_secs': end_secs, 'end_index': end_index, 
+                              'round': cur_row_df.loc[0,'round'], 
+                              'winner': 'Unknown', 
+                              'winner_via_health': 'Unknown', 
+                              'winner_via_tmplate_match': 'Unknown', 
+                              'winner_confidence': None, 
+                              'character_1P': 'Unknown', 
+                              'character_2P': 'Unknown', 'perfect': None, 
+                              'double_ko': None, 'time_out': None, 
+                              'draw': None, 'inconclusive_data': True, 
+                              'inconclusive_note': note
+                              }
     else:
         start_secs = adj_row_df.loc[0,'end_secs'] + starter_time 
         start_index = adj_row_df.loc[0,'end_index'] + starter_index
-        inconclusive_round_dict = {'start_secs': start_secs, 
-                                   'start_index': start_index, 
-                                   'end_secs': cur_row_df.loc[0,'end_secs'], 
-                                   'end_index': cur_row_df.loc[0,'end_index'], 
-                                   'round': 'Unknown', 
-                                   'winner': 'Unknown', 
-                                   'winner_via_health': 'Unknown', 
-                                   'winner_via_tmplate_match': 'Unknown', 
-                                   'winner_confidence': None, 
-                                   'character_1P': 'Unknown', 
-                                   'character_2P': 'Unknown', 
-                                   'perfect': cur_row_df.loc[0,'perfect'], 
-                                   'double_ko': cur_row_df.loc[0,'double_ko'], 
-                                   'time_out': cur_row_df.loc[0,'time_out'], 
-                                   'draw': cur_row_df.loc[0,'draw'], 
-                                   'inconclusive_data': True, 
-                                   'inconclusive_note': note_str
-                                   }
+        inconclusive_round = {'start_secs': start_secs, 
+                              'start_index': start_index, 
+                              'end_secs': cur_row_df.loc[0,'end_secs'], 
+                              'end_index': cur_row_df.loc[0,'end_index'], 
+                              'round': 'Unknown', 'winner': 'Unknown', 
+                              'winner_via_health': 'Unknown', 
+                              'winner_via_tmplate_match': 'Unknown', 
+                              'winner_confidence': None, 
+                              'character_1P': 'Unknown', 
+                              'character_2P': 'Unknown', 
+                              'perfect': cur_row_df.loc[0,'perfect'], 
+                              'double_ko': cur_row_df.loc[0,'double_ko'], 
+                              'time_out': cur_row_df.loc[0,'time_out'], 
+                              'draw': cur_row_df.loc[0,'draw'], 
+                              'inconclusive_data': True, 
+                              'inconclusive_note': note
+                              }
     
-    return inconclusive_round_dict
+    return inconclusive_round
 
-def _create_invalid_dict(cur_row_df, note_str):
-    invalid_dict = {}
+def _create_invalid_dict(cur_row_df, note:str)->dict:
+    invalid:dict = {}
     if cur_row_df.loc[0,'block_type'] == 'Starter':
-        invalid_dict = {'start_secs': cur_row_df.loc[0,'start_secs'], 
-                        'start_index': cur_row_df.loc[0,'start_index'], 
-                        'end_secs': -1, 'end_index': -1, 
-                        'round': cur_row_df.loc[0,'round'], 
-                        'winner': 'Unknown', 'winner_via_health': 'Unknown', 
-                        'winner_via_tmplate_match': 'Unknown', 
-                        'winner_confidence': None, 'character_1P': 'Unknown', 
-                        'character_2P': 'Unknown', 'perfect': None, 
-                        'double_ko': None, 'time_out': None, 'draw': None, 
-                        'inconclusive_data': True, 
-                        'inconclusive_note': note_str
-                        }
+        invalid = {'start_secs': cur_row_df.loc[0,'start_secs'], 
+                   'start_index': cur_row_df.loc[0,'start_index'], 
+                   'end_secs': -1, 'end_index': -1, 
+                   'round': cur_row_df.loc[0,'round'], 'winner': 'Unknown', 
+                   'winner_via_health': 'Unknown', 
+                   'winner_via_tmplate_match': 'Unknown', 
+                   'winner_confidence': None, 'character_1P': 'Unknown', 
+                   'character_2P': 'Unknown', 'perfect': None, 
+                   'double_ko': None, 'time_out': None, 'draw': None, 
+                   'inconclusive_data': True, 'inconclusive_note': note
+                   }
     else:
-        invalid_dict = {'start_secs': -1, 
-                        'start_index': -1, 
-                        'end_secs': cur_row_df.loc[0,'end_secs'], 
-                        'end_index': cur_row_df.loc[0,'end_index'], 
-                        'round': 'Unknown', 
-                        'winner': 'Unknown', 'winner_via_health': 'Unknown', 
-                        'winner_via_tmplate_match': 'Unknown', 
-                        'winner_confidence': None, 'character_1P': 'Unknown', 
-                        'character_2P': 'Unknown', 
-                        'perfect': cur_row_df.loc[0,'perfect'], 
-                        'double_ko': cur_row_df.loc[0,'double_ko'], 
-                        'time_out': cur_row_df.loc[0,'time_out'], 
-                        'draw': cur_row_df.loc[0,'draw'], 
-                        'inconclusive_data': True, 
-                        'inconclusive_note': note_str
-                        }
-    return invalid_dict
+        invalid = {'start_secs': -1, 'start_index': -1, 
+                   'end_secs': cur_row_df.loc[0,'end_secs'], 
+                   'end_index': cur_row_df.loc[0,'end_index'], 
+                   'round': 'Unknown', 'winner': 'Unknown', 
+                   'winner_via_health': 'Unknown', 
+                   'winner_via_tmplate_match': 'Unknown', 
+                   'winner_confidence': None, 'character_1P': 'Unknown', 
+                   'character_2P': 'Unknown', 
+                   'perfect': cur_row_df.loc[0,'perfect'], 
+                   'double_ko': cur_row_df.loc[0,'double_ko'], 
+                   'time_out': cur_row_df.loc[0,'time_out'], 
+                   'draw': cur_row_df.loc[0,'draw'], 
+                   'inconclusive_data': True, 'inconclusive_note': note
+                   }
+    return invalid
 
-def _create_valid_round_dict(cur_row_df, next_row_df):
+def _create_valid_round_dict(cur_row_df, next_row_df)->dict:
     cur_row = cur_row_df.copy().reset_index()
     next_row = next_row_df.copy().reset_index()
     round_dict = {'start_secs': cur_row.loc[0,'start_secs'], 
@@ -511,12 +502,13 @@ def _create_valid_round_dict(cur_row_df, next_row_df):
                  }
     return round_dict
 
-def _resolve_missing_pair(cur_row_df, next_row_df, prev_row_df, agg_config_dict):
+def _resolve_missing_pair(cur_row_df, next_row_df, prev_row_df, 
+                          agg_config:dict)->dict:
     cur_row = cur_row_df.copy().reset_index()
     next_row = next_row_df.copy().reset_index()
     prev_row = prev_row_df.copy().reset_index()
-    next_row_exists = len(list(next_row.index)) > 0
-    prev_row_exists = len(list(prev_row.index)) > 0
+    next_row_exists:bool = len(list(next_row.index)) > 0
+    prev_row_exists:bool = len(list(prev_row.index)) > 0
 
     if cur_row.loc[0,'block_type'] == 'Starter':
         if next_row_exists == False:
@@ -525,8 +517,8 @@ def _resolve_missing_pair(cur_row_df, next_row_df, prev_row_df, agg_config_dict)
         elif ((cur_row.loc[0,'round'] == 'Round_1') and 
         (next_row.loc[0,'round'] == 'Round_1')):
             inconl_note = "Missing Ender: Button Check or False positive"
-            return _create_inconclusive_dict(cur_row, next_row, 
-                                             agg_config_dict, inconl_note)
+            return _create_inconclusive_dict(cur_row, next_row, agg_config, 
+                                             inconl_note)
         elif (((cur_row.loc[0,'round'] == 'Round_1') and 
         (next_row.loc[0,'round'] == 'Round_2')) or 
         ((cur_row.loc[0,'round'] == 'Round_2') and 
@@ -534,8 +526,8 @@ def _resolve_missing_pair(cur_row_df, next_row_df, prev_row_df, agg_config_dict)
         ((cur_row.loc[0,'round'] == 'Round_3') and 
         (next_row.loc[0,'round'] == 'Round_Final'))):
             inconl_note = "Missing Ender: Middle of a Game"
-            return _create_inconclusive_dict(cur_row, next_row, 
-                                             agg_config_dict, inconl_note)
+            return _create_inconclusive_dict(cur_row, next_row, agg_config, 
+                                             inconl_note)
         elif (((cur_row.loc[0,'round'] == 'Round_2') and 
         (next_row.loc[0,'round'] == 'Round_1')) or 
         ((cur_row.loc[0,'round'] == 'Round_3') and 
@@ -543,30 +535,32 @@ def _resolve_missing_pair(cur_row_df, next_row_df, prev_row_df, agg_config_dict)
         ((cur_row.loc[0,'round'] == 'Round_Final') and 
         (next_row.loc[0,'round'] == 'Round_1'))):
             inconl_note = "Missing Ender: Last Round of a Game"
-            return _create_inconclusive_dict(cur_row, next_row, 
-                                             agg_config_dict, inconl_note)
+            return _create_inconclusive_dict(cur_row, next_row, agg_config, 
+                                             inconl_note)
         else:
             #Catch all where cur & next round aren't both R1 or sequential/new game
             inconl_note = "Missing Ender: Unknown"
-            return _create_inconclusive_dict(cur_row, next_row, 
-                                             agg_config_dict, inconl_note)        
+            return _create_inconclusive_dict(cur_row, next_row, agg_config, 
+                                             inconl_note)        
     elif cur_row.loc[0,'block_type'] == 'Ender':
         if prev_row_exists == False:
             invalid_note = "Invalid: Round Ender at Start of Video"
             return _create_invalid_dict(cur_row, invalid_note)
         else:
             inconl_note = "Missing Starter: Game aggregation will attempt to fill missing round info"
-            return _create_inconclusive_dict(cur_row, prev_row, 
-                                             agg_config_dict, inconl_note)
+            return _create_inconclusive_dict(cur_row, prev_row, agg_config, 
+                                             inconl_note)
+##########
+##########End of changes May 6th 7:28pm
 
 #Transforms round starter & ender data into round data, attempts to resolve
 #rounds with missing starter or ender where possible & flags those instances
 def _consolidate_round_data(rounds_df, agg_config_dict):
     index_vector_ls = list(rounds_df.index)
     last_index = index_vector_ls[-1]
-    round_data_df = pd.DataFrame({})
     i = 0
     prev_index = -1
+    round_data_df = pd.DataFrame({})
     prev_row_df = pd.DataFrame({})
 
     while i < len(index_vector_ls):
