@@ -549,8 +549,6 @@ def _resolve_missing_pair(cur_row_df, next_row_df, prev_row_df,
             return _create_inconclusive_dict(cur_row, prev_row, agg_config, 
                                              inconl_note)
 
-##########
-##########Start of changes May 6th 8:34pm
 #Transforms round starter & ender data into round data, attempts to resolve
 #rounds with missing starter or ender where possible & flags those instances
 def _consolidate_round_data(rounds_df, agg_config:dict):
@@ -758,64 +756,66 @@ def _verify_character_detected(char_detected:dict)->str:
             max_key = 'Unknown'
     
     return max_key
-##########End of changes May 6th 8:34pm
-##########
 
+##########Start of changes May 7th 11:04am
+##########
 #Player 1 & 2 Character detect: aggregate character names for frames in each round
-def extract_played_characters(ggst_vid_data_df, rounds_df, agg_config_dict):
+def extract_played_characters(ggst_vid_data_df, rounds_df, agg_config:dict):
     char_data_rounds_df = rounds_df.copy()
-    char_portraits_agg_ls = get_char_portrait_col_names(list(ggst_vid_data_df))
-    player_1_characters_ls = [x for x in char_portraits_agg_ls if '1P_Portrait' in x]
-    player_2_characters_ls = [x for x in char_portraits_agg_ls if '2P_Portrait' in x]
+    char_portraits_agg:list = get_char_portrait_col_names(list(ggst_vid_data_df))
+    player_1_characters:list = [x for x in char_portraits_agg 
+                                if '1P_Portrait' in x]
+    player_2_characters:list = [x for x in char_portraits_agg 
+                                if '2P_Portrait' in x]
     
     for index, row in char_data_rounds_df.iterrows():
         if (row.start_index != -1) and (row.end_index != -1):
-            round_slice_df = ggst_vid_data_df.loc[(row.start_index + 1):(row.end_index - 1),]
-            ####Debug March 26th
-            #print("Round Slice, start: {} end: {}".format((row.start_index + 1), (row.end_index - 1)))
-            player_1_char = get_character_used(round_slice_df, 
-                                                player_1_characters_ls, 
-                                                agg_config_dict['min_character_delta'])
-            player_2_char = get_character_used(round_slice_df, 
-                                                player_2_characters_ls, 
-                                                agg_config_dict['min_character_delta'])
+            start:int = row.start_index + 1
+            end:int = row.end_index - 1
+            round_slice_df = ggst_vid_data_df.loc[start:end,]
+            player_1_char:str = get_character_used(round_slice_df, 
+                                                   player_1_characters, 
+                                                   agg_config['min_character_delta'])
+            player_2_char:str = get_character_used(round_slice_df, 
+                                                   player_2_characters, 
+                                                   agg_config['min_character_delta'])
             char_data_rounds_df.loc[index, 'character_1P'] = player_1_char
             char_data_rounds_df.loc[index, 'character_2P'] = player_2_char
             
     return char_data_rounds_df
 
 #return "winner" value & a value representing the confidence in that conclusion
-def _get_winner_by_health(ggst_vid_data_df, round_df, agg_config_dict):
+def _get_winner_by_health(ggst_vid_data_df, round_df, 
+                          agg_config:dict)->tuple[str,str]:
     round_df = round_df.reset_index()
-    start_index = round_df.loc[0, 'start_index']
-    end_index = round_df.loc[0, 'end_index']
+    start_index:int = round_df.loc[0, 'start_index']
+    end_index:int = round_df.loc[0, 'end_index']
     last_index = list(ggst_vid_data_df.tail(1).index)[0]
-    frame_buffer_legit_ender = agg_config_dict['health_after_ender_frame_buffer']
-    frame_buffer_missing_ender = agg_config_dict['missing_ender_health_buffer']
-    health_min_delta = agg_config_dict['player_health_min_delta']
-    health_min_delta_no_ender = agg_config_dict['missing_ender_player_health_min_delta']
-    frame_buffer_no_health_post_ender = agg_config_dict['no_health_after_ender_buffer']
-    health_min_delta_no_health_post_ender = agg_config_dict['no_health_after_ender_delta']
+    frame_buffer_legit_ender:int = agg_config['health_after_ender_frame_buffer']
+    frame_buffer_missing_ender:int = agg_config['missing_ender_health_buffer']
+    health_min_delta:float = agg_config['player_health_min_delta']
+    health_min_delta_no_ender:float = agg_config['missing_ender_player_health_min_delta']
+    frame_buffer_no_health_post_ender:int = agg_config['no_health_after_ender_buffer']
+    health_min_delta_no_health_post_ender:float = agg_config['no_health_after_ender_delta']
     
     if 'Missing Ender' not in round_df.loc[0, 'inconclusive_note']:
-        end_slice_index = end_index + frame_buffer_legit_ender
+        end_slice_index:int = end_index + frame_buffer_legit_ender
         if end_slice_index > last_index:
             end_slice_index = last_index
-        ##Changed start slice index from end_index + 1 to end_index - 2
+            
         ggst_data_slice_df = ggst_vid_data_df.loc[(end_index - 2):end_slice_index, ]
-        #Function returns Winner & confidence in that result based on data
         winner_by_health, confidence = _parse_health_data_for_winner(ggst_data_slice_df, 
                                                                      health_min_delta)
         if winner_by_health != 'Unknown':
             return winner_by_health, confidence
         else:
-            slice_start_index = end_index - frame_buffer_no_health_post_ender
+            slice_start_index:int = end_index - frame_buffer_no_health_post_ender
             ggst_data_slice_df = ggst_vid_data_df.loc[slice_start_index:
                                                   (end_index - 1), ]
             return _no_health_post_ender_health_check(ggst_data_slice_df, 
                                                       health_min_delta_no_health_post_ender)
     else:
-        slice_start_index = end_index - frame_buffer_missing_ender
+        slice_start_index:int = end_index - frame_buffer_missing_ender
         if slice_start_index < start_index:
             slice_start_index = start_index
         ggst_data_slice_df = ggst_vid_data_df.loc[slice_start_index:
@@ -823,15 +823,16 @@ def _get_winner_by_health(ggst_vid_data_df, round_df, agg_config_dict):
         return _no_ender_health_check(ggst_data_slice_df, health_min_delta_no_ender)
 
 #For the case when an ender exists, but no health data extracted post-ender
-def _no_health_post_ender_health_check(ggst_health_slice_df, min_delta):
+def _no_health_post_ender_health_check(ggst_health_slice_df, 
+                                       min_delta:float)->tuple[str,str]:
     #dataframe slice index in reverse order as list
     index_ls = list(ggst_health_slice_df.sort_index(ascending=False).index)
-    index_size = len(index_ls)
-    index = 0
-    winner = 'Unknown'
-    confidence = None
+    index_size:int = len(index_ls)
+    index:int = 0
+    winner:str = 'Unknown'
+    confidence:str = None
     while (index < index_size) and (winner == 'Unknown'):
-        df_index = index_ls[index]
+        df_index:int = index_ls[index]
         data_row_df = ggst_health_slice_df.loc[df_index:df_index,]
         winner, confidence = _pre_ender_extra_health_check(data_row_df, min_delta)
         index = index + 1
@@ -839,15 +840,15 @@ def _no_health_post_ender_health_check(ggst_health_slice_df, min_delta):
 
 #For the case when no ender exists for a round, returns winner by health if possible 
 #& confidence
-def _no_ender_health_check(ggst_health_slice_df, min_delta):
+def _no_ender_health_check(ggst_health_slice_df, min_delta:float)->tuple[str,str]:
     #dataframe slice index in reverse order as list
     index_ls = list(ggst_health_slice_df.sort_index(ascending=False).index)
-    index_size = len(index_ls)
-    index = 0
-    winner = 'Unknown'
-    confidence = None
+    index_size:int = len(index_ls)
+    index:int = 0
+    winner:str = 'Unknown'
+    confidence:str = None
     while (index < index_size) and (winner == 'Unknown'):
-        df_index = index_ls[index]
+        df_index:int = index_ls[index]
         data_row_df = ggst_health_slice_df.loc[df_index:df_index,]
         winner, confidence = _parse_health_data_for_winner(data_row_df, min_delta)
         if winner == 'Unknown':
@@ -858,14 +859,15 @@ def _no_ender_health_check(ggst_health_slice_df, min_delta):
 
 #Used in the case of a round which had no ender or no health data post ender
 #There's a case where P1 & P2 health columns will both have non 0 values
-def _pre_ender_extra_health_check(ggst_health_slice_df, min_delta):
-    ggst_health_slice_df = ggst_health_slice_df.reset_index()
-    Player_1_high = ggst_health_slice_df.loc[0, '1P_High_Health']
-    Player_1_low = ggst_health_slice_df.loc[0, '1P_Low_Health']
-    Player_2_high = ggst_health_slice_df.loc[0, '2P_High_Health']
-    Player_2_low = ggst_health_slice_df.loc[0, '2P_Low_Health']
-    is_UI_displayed = ggst_health_slice_df.loc[0, 'Game_UI_Timer_Outline'] > 0
-    confidence = None
+def _pre_ender_extra_health_check(ggst_slice_df, min_delta:float)->tuple[str,str]:
+    ggst_health_slice_df = ggst_slice_df.copy().reset_index()
+    Player_1_high:int = ggst_health_slice_df.loc[0, '1P_High_Health']
+    Player_1_low:int = ggst_health_slice_df.loc[0, '1P_Low_Health']
+    Player_2_high:int = ggst_health_slice_df.loc[0, '2P_High_Health']
+    Player_2_low:int = ggst_health_slice_df.loc[0, '2P_Low_Health']
+    is_UI_displayed:bool = (ggst_health_slice_df.loc[0, 'Game_UI_Timer_Outline'] 
+                            > 0)
+    confidence:str = None
     
     if ((Player_1_high == 0) and (Player_1_low == 0) and (Player_2_high == 0) 
         and (Player_2_low == 0)):
@@ -901,19 +903,18 @@ def _pre_ender_extra_health_check(ggst_health_slice_df, min_delta):
     else:
         return 'Unknown', confidence
 
-def _parse_health_data_for_winner(ggst_health_slice_df, min_delta):
-    ggst_rows_w_ui_df = ggst_health_slice_df.loc[
-        ggst_health_slice_df.Game_UI_Timer_Outline > 0]
-    confidence = None
-    #April 7th FIltering out rows from the next round where P1 & P2 both have high health vals
+def _parse_health_data_for_winner(ggst_slice_df, min_delta:float)->tuple[str,str]:
+    ggst_rows_w_ui_df = ggst_slice_df.loc[(ggst_slice_df.Game_UI_Timer_Outline 
+                                           > 0)]
+    confidence:str = None
     ggst_rows_w_ui_df = ggst_rows_w_ui_df.loc[((ggst_rows_w_ui_df['1P_High_Health'] == 0) |
                                                (ggst_rows_w_ui_df['2P_High_Health'] == 0))]
     if len(ggst_rows_w_ui_df) == 0:
         return 'Unknown', confidence
-    Player_1_high = ggst_rows_w_ui_df['1P_High_Health'].sum()
-    Player_1_low = ggst_rows_w_ui_df['1P_Low_Health'].sum()
-    Player_2_high = ggst_rows_w_ui_df['2P_High_Health'].sum()
-    Player_2_low = ggst_rows_w_ui_df['2P_Low_Health'].sum()
+    Player_1_high:int = ggst_rows_w_ui_df['1P_High_Health'].sum()
+    Player_1_low:int = ggst_rows_w_ui_df['1P_Low_Health'].sum()
+    Player_2_high:int = ggst_rows_w_ui_df['2P_High_Health'].sum()
+    Player_2_low:int = ggst_rows_w_ui_df['2P_Low_Health'].sum()
     
     if (Player_2_high == 0) and (Player_2_low == 0):
         if Player_1_high > 0:
@@ -942,7 +943,7 @@ def _parse_health_data_for_winner(ggst_health_slice_df, min_delta):
     else:
         return 'Unknown', confidence
 
-def _check_for_player_win_template(ggst_slice_df, min_delta):
+def _check_for_player_win_template(ggst_slice_df, min_delta:float)->str:
     ggst_player_win_df = ggst_slice_df.loc[(ggst_slice_df.Ender_1P_Win > 0) | 
                                            (ggst_slice_df.Ender_2P_Win > 0)]
     
@@ -960,30 +961,31 @@ def _check_for_player_win_template(ggst_slice_df, min_delta):
     else:
         return 'Unknown'
     
-def _get_winner_by_tmpl(ggst_vid_data_df, round_df, agg_config_dict):
+def _get_winner_by_tmpl(ggst_vid_data_df, round_df, agg_config:dict)->str:
     round_df = round_df.reset_index()
-    start_index = round_df.loc[0, 'start_index']
-    end_index = round_df.loc[0, 'end_index']
+    start_index:int = round_df.loc[0, 'start_index']
+    end_index:int = round_df.loc[0, 'end_index']
     last_index = list(ggst_vid_data_df.tail(1).index)[0]
-    frame_buffer_legit_ender = agg_config_dict['player_win_after_ender_buffer']
-    frame_buffer_missing_ender = agg_config_dict['missing_ender_player_win_buffer']
-    win_min_delta = agg_config_dict['player_win_enders_min_delta']
+    frame_buffer_legit_ender:int = agg_config['player_win_after_ender_buffer']
+    frame_buffer_missing_ender:int = agg_config['missing_ender_player_win_buffer']
+    win_min_delta:float = agg_config['player_win_enders_min_delta']
 
     if 'Missing Ender' not in round_df.loc[0, 'inconclusive_note']:
-        end_slice_index = end_index + frame_buffer_legit_ender
+        end_slice_index:int = end_index + frame_buffer_legit_ender
         if end_slice_index > last_index:
             end_slice_index = last_index
         ggst_data_slice_df = ggst_vid_data_df.loc[(end_index + 1):end_slice_index, ]
         #Function returns Winner & confidence in that result based on data
         return _check_for_player_win_template(ggst_data_slice_df, win_min_delta)
     else:
-        slice_start_index = end_index - frame_buffer_missing_ender
+        slice_start_index:int = end_index - frame_buffer_missing_ender
         if slice_start_index < start_index:
             slice_start_index = start_index
         ggst_data_slice_df = ggst_vid_data_df.loc[slice_start_index:
                                                   (end_index - 1), ]        
         return _check_for_player_win_template(ggst_data_slice_df, win_min_delta)
-    
+##########
+##########End of changes May 7th 11:04am
 
 def _get_overall_confidence(winner_via_template, winner_via_health, 
                                    health_confidence):
