@@ -20,20 +20,19 @@ import extraction as ex
 import aggregation as agg
 import output as out
 
-
 ##########
-##########Start of changes May DD H:MMpm
-def _no_duel_number_matches(match_scores_dict:dict)-> bool:
-    total_duel_num_score = match_scores_dict['Starter_Number_1']
-    total_duel_num_score += match_scores_dict['Starter_Number_2']
-    total_duel_num_score += match_scores_dict['Starter_Number_3']
+##########Start of changes May 8th 2:58pm
+def _no_duel_number_matches(match_scores:dict)-> bool:
+    total_duel_num_score = match_scores['Starter_Number_1']
+    total_duel_num_score += match_scores['Starter_Number_2']
+    total_duel_num_score += match_scores['Starter_Number_3']
     return (total_duel_num_score == 0)
     
-def _no_starter_matches(match_scores_dict:dict)-> bool:
-    total_starter_score = 0 if _no_duel_number_matches(match_scores_dict) else 1
-    total_starter_score += match_scores_dict['Starter_Duel']
-    total_starter_score += match_scores_dict['Starter_Number_Final']
-    total_starter_score += match_scores_dict['Starter_Lets_Rock']
+def _no_starter_matches(match_scores:dict)-> bool:
+    total_starter_score = 0 if _no_duel_number_matches(match_scores) else 1
+    total_starter_score += match_scores['Starter_Duel']
+    total_starter_score += match_scores['Starter_Number_Final']
+    total_starter_score += match_scores['Starter_Lets_Rock']
     return (total_starter_score == 0)
 
 #Creates a frame dict w/ all Starter & Ender scores set to 0 for 1st round of matching
@@ -47,15 +46,18 @@ def _create_zero_scores_frame_dict(time_in_secs:float)-> dict:
             'Game_UI_Timer_Outline': 0
             }
 
-def _set_duel_values_to_zero(match_scores_dict:dict)-> dict:
-    match_scores_dict['Starter_Duel'] = 0
-    match_scores_dict['Starter_Number_1'] = 0
-    match_scores_dict['Starter_Number_2'] = 0
-    match_scores_dict['Starter_Number_3'] = 0
-    match_scores_dict['Starter_Number_Final'] = 0
+def _set_duel_values_to_zero(match_scores:dict)-> dict:
+    new_match_scores:dict = match_scores.copy()
+    new_match_scores['Starter_Duel'] = 0
+    new_match_scores['Starter_Number_1'] = 0
+    new_match_scores['Starter_Number_2'] = 0
+    new_match_scores['Starter_Number_3'] = 0
+    new_match_scores['Starter_Number_Final'] = 0
     
-    return match_scores_dict
+    return new_match_scores
 
+#Checks a template image against a frame image & changes score to 0 if minimum
+#score is not met for the category of template image.
 def vet_match_score(img, tmpl_img, tmpl_key:str, tmpl_dict:dict, 
                     min_mappings:dict)-> float:           
     #Getting Template Match Score min/max w/ (x, y) location data
@@ -65,14 +67,13 @@ def vet_match_score(img, tmpl_img, tmpl_key:str, tmpl_dict:dict,
     #Only reporting scores which are over configureed minimums, otherwise it's 0
     return ex.check_min_match_val(tmpl_key, tmpl_dict, min_mappings, maxVal)
 
-def starter_ender_tmpl_scores_vid(vid_file_path:str, template_img_dicts_ls:list, 
+def starter_ender_tmpl_scores_vid(vid_file_path:str, tmpl_img_dicts:list, 
                                   min_mappings:dict, draw_buffer:int, 
                                   frames_per_sec:int = 4, is_verbose:bool=False):
-    template_img_dicts:list = ex.load_tmp_imgs(template_img_dicts_ls)
+    template_img_dicts:list = ex.load_tmp_imgs(tmpl_img_dicts)
     tmp_match_scores_df = pd.DataFrame({})
     index_num:int = 0
     seconds:float = 0
-    #Frames_per_second min 1 fps & max 60 fps
     frame_rate:float = (1 / np.clip(frames_per_sec, 1, 60))
     starter_dict:dict = {}
     ender_dict:dict = {}
@@ -94,10 +95,8 @@ def starter_ender_tmpl_scores_vid(vid_file_path:str, template_img_dicts_ls:list,
     perfect_img = ender_dict['img_objs']['Perfect']
     times_up_img = ender_dict['img_objs']['Times_Up']
     timer_ui_img = ui_dict['img_objs']['Timer_Outline']
-
     check_for_draw:bool = False
     frames_to_check_draw:int = 0
-    
     vidcap = cv2.VideoCapture(vid_file_path)
     vidcap.set(cv2.CAP_PROP_POS_MSEC,seconds*1000)
     hasFrame,image = vidcap.read()
@@ -106,10 +105,10 @@ def starter_ender_tmpl_scores_vid(vid_file_path:str, template_img_dicts_ls:list,
         if is_verbose:
             print("Starter<->Ender | Checking Time: {}secs, Frame: {} (in secs)... "
                   .format(int(seconds), seconds))
-        #Decrement the draw buffer when check_for_draw bool is True
-        frames_to_check_draw = (frames_to_check_draw - 1) if check_for_draw else 0
+        frames_to_check_draw = ((frames_to_check_draw - 1) if check_for_draw 
+                                else 0)
         match_scores:dict = _create_zero_scores_frame_dict(seconds)
-        #Getting Duel score for frame, to begin starter frame template match logic
+
         match_scores['Starter_Duel'] = vet_match_score(image, duel_img, 'Duel', 
                                                        starter_dict, 
                                                        min_mappings)
@@ -133,28 +132,28 @@ def starter_ender_tmpl_scores_vid(vid_file_path:str, template_img_dicts_ls:list,
                                                                        'Number_Final', 
                                                                        starter_dict, 
                                                                        min_mappings)
-                #When there are no round number matches, Duel score is invalid, set to 0
+                #When no round number matches, Duel match score is set to 0
                 if match_scores['Starter_Number_Final'] == 0:
                     match_scores['Starter_Duel'] = 0
             
-            #Duel 1 & 2 is sometimes a false positive for Ender Times Up, checking for that
+            #Duel 1/2 is sometimes a false positive for Ender Times Up,
             match_scores['Ender_Times_Up'] = vet_match_score(image, times_up_img, 
                                                              'Times_Up', 
                                                              ender_dict, 
                                                              min_mappings)
-            #If Times Up (word to O.C.) is detected, reset Duel values
+            #If Times Up is detected, reset Duel match scores to 0
             if match_scores['Ender_Times_Up'] > 0:
                 match_scores = _set_duel_values_to_zero(match_scores)
                 check_for_draw = True
                 frames_to_check_draw = draw_buffer
-        #Made Let's Rock checked everytime due to false positives with Duel 1s
+        #Let's Rock checked everytime due to false positives with Duel 1
         match_scores['Starter_Lets_Rock'] = vet_match_score(image, lets_rock_img, 
                                                             'Lets_Rock', 
                                                             starter_dict, 
                                                             min_mappings)
         if check_for_draw and (frames_to_check_draw == 0):
             check_for_draw = False
-        #Check for enders only if no valid Starters are detected
+        #Check for other enders only if no valid Starters are detected
         if (_no_starter_matches(match_scores)):
             match_scores['Ender_Slash'] = vet_match_score(image, slash_img, 
                                                           'Slash', ender_dict, 
@@ -185,7 +184,7 @@ def starter_ender_tmpl_scores_vid(vid_file_path:str, template_img_dicts_ls:list,
                 if match_scores['Ender_Times_Up'] > 0:
                     check_for_draw = True
                     frames_to_check_draw = draw_buffer
-            #Check for Draw if Times Up not detected & check_forDraw flag active
+            #Check for Draw if Times Up not detected & check_for_Draw flag active
             if (match_scores['Ender_Times_Up'] == 0) and check_for_draw:
                 match_scores['Ender_Draw'] = vet_match_score(image, draw_img, 
                                                              'Draw', ender_dict, 
@@ -207,15 +206,14 @@ def starter_ender_tmpl_scores_vid(vid_file_path:str, template_img_dicts_ls:list,
     
     return tmp_match_scores_df
 
-def _set_in_round_cols_to_zero(ggst_data_df, char_img_dicts_ls:list):
+def _set_in_round_cols_to_zero(ggst_data_df, char_img_dicts:list):
     ggst_zero_data_df = ggst_data_df.copy()
-    for char_dict in char_img_dicts_ls:
+    for char_dict in char_img_dicts:
         char_P1_col_name = "{}_1P_Portrait".format(char_dict['Name'])
         char_P2_col_name = "{}_2P_Portrait".format(char_dict['Name'])
         ggst_zero_data_df[char_P1_col_name] = 0
         ggst_zero_data_df[char_P2_col_name] = 0
     
-    #ggst_zero_data_df['Game_UI_Timer_Outline'] = 0
     ggst_zero_data_df['1P_High_Health'] = 0
     ggst_zero_data_df['1P_Low_Health'] = 0
     ggst_zero_data_df['2P_High_Health'] = 0
@@ -230,42 +228,42 @@ def get_player_win_template_data(video_path:str, ggst_data_df, rounds_df,
     ggst_new_data_df = ggst_data_df.copy()
     ggst_new_data_df['Ender_1P_Win'] = 0
     ggst_new_data_df['Ender_2P_Win'] = 0
-    all_img_dicts_ls = [ender_img_dict]
-    all_img_dicts_ls = ex.load_tmp_imgs(all_img_dicts_ls)
-    img_dict = all_img_dicts_ls[0]
-    
+    all_img_dicts:list = [ender_img_dict]
+    all_img_dicts = ex.load_tmp_imgs(all_img_dicts)
+    img_dict:dict = all_img_dicts[0]
     vidcap = cv2.VideoCapture(video_path)
     
     for j, row in rounds_df.iterrows():
         if (row.end_index != -1):
-            start_index = row.end_index + frames_after_ender
-            end_index = row.end_index + win_tmpl_buffer
-            last_index = list(ggst_new_data_df.index)[-1]
+            start_index:int = row.end_index + frames_after_ender
+            end_index:int = row.end_index + win_tmpl_buffer
+            last_index:int = list(ggst_new_data_df.index)[-1]
             start_index = last_index if start_index > last_index else start_index
             end_index = last_index if end_index > last_index else end_index
-        
             ggst_round_data_df = ggst_new_data_df.loc[start_index:end_index]
 
             for index, row in ggst_round_data_df.iterrows():
-                seconds = row.Frame_Number_secs
+                seconds:float = row.Frame_Number_secs
                 vidcap.set(cv2.CAP_PROP_POS_MSEC,seconds*1000)
                 hasFrame,image = vidcap.read()
                 if is_verbose:
-                    print("Checking 1P/2P Win Templates | Checking Time: {}secs, Frame: {} (in secs)... ".format(int(seconds), seconds))
-            
+                    print("""Checking 1P/2P Win Templates | Checking Time: 
+                          {}secs, Frame: {} (in secs)... """.format(int(seconds), 
+                                                                    seconds))
                 if hasFrame:
                     vetted_score = vet_match_score(image, 
                                                    img_dict['img_objs']['1P_Win'], 
                                                    '1P_Win', ender_img_dict, 
                                                    min_mappings)
                     ggst_new_data_df.loc[index, 'Ender_1P_Win'] = vetted_score
-                
                     vetted_score = vet_match_score(image, 
                                                    img_dict['img_objs']['2P_Win'], 
                                                    '2P_Win', ender_img_dict, 
                                                    min_mappings)
                     ggst_new_data_df.loc[index, 'Ender_2P_Win'] = vetted_score
     return ggst_new_data_df
+##########End of changes May 8th 2:58pm
+##########
 
 #When there is adequate data, the char match is predicted & reduced to those two chars
 def _get_predict_chars_dict_ls(ggst_char_pred_df, all_img_dicts:list, 
