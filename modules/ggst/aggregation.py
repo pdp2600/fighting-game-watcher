@@ -7,11 +7,8 @@ writing aggregation results to a variety of output formats.
 
 @author: PDP2600
 """
-import os
 import pandas as pd
 from collections import Counter
-from datetime import datetime
-import json
 
 def get_char_portrait_col_names(df_columns:list):
     #Retrieves all the P1 & P2 character portrait match column names
@@ -1462,105 +1459,6 @@ def _print_inconclusive_game_data(games_df):
                                                      inconclusive_notes))
     else:
         print("--No inconclusive game data--")
-
-#Creates an output directory & writes the output to file as CSVs, JSON, etc.
-def create_csv_output_files(vid_data_df, games_df, game_rounds_df, 
-                            anomalous_df, vid_name:str='GGST_video', 
-                            create_json:bool = False, orignal_vid:str = "", 
-                            yt_link:str = "")->str:
-    dt = datetime.now()
-    timestamp = "{}-{}-{}_{}-{}-{}".format(dt.year, dt.month, dt.day, dt.hour, 
-                                            dt.minute, dt.second)
-    new_dir:str = "{}_{}".format(timestamp, vid_name)
-    cur_dir:str = os.getcwd()
-    output_dir:str = "{}\\output\\{}".format(cur_dir, new_dir)
-    os.makedirs(output_dir)
-    vid_data_df.to_csv("{}\\Visual_detection_data_{}_{}.csv".format(output_dir, 
-                                                                    vid_name, 
-                                                                    timestamp))
-    games_df.to_csv("{}\\Game_data_{}_{}.csv".format(output_dir, vid_name, timestamp), 
-                    index=False)
-    game_rounds_df.to_csv("{}\\Round_data_{}_{}.csv".format(output_dir, vid_name, 
-                                                            timestamp), index=False)
-    if len(anomalous_df) > 0:
-        anomalous_df.to_csv("{}\\Anomalous_rounds_{}_{}.csv".format(output_dir, 
-                                                                    vid_name, 
-                                                                    timestamp), 
-                            index=False)
-    if create_json:
-        create_json_file(games_df, game_rounds_df, output_dir, 
-                         orignal_vid_file = orignal_vid, youtube_link = yt_link)
-    
-    return output_dir
-
-#Creates a JSON file based on the games df & nests the round data into each game
-def create_json_file(games_df, games_rounds_df, file_path:str, 
-                     orignal_vid_file:str = "", youtube_link:str = "")->str:
-    dt = datetime.now()
-    timestamp = "{}-{}-{}_{}-{}-{}".format(dt.year, dt.month, dt.day, dt.hour, 
-                                            dt.minute, dt.second)
-    file_name:str = "Games_with_round_data_{}_{}.json".format(orignal_vid_file, 
-                                                              timestamp)
-    full_path:str = "{}\\{}".format(file_path, file_name)
-    
-    game_ids_ls = list(games_df.game_id)
-    games_data_json:dict = {'original_vid_filename': orignal_vid_file,
-                            'youtube_video_link': youtube_link,
-                            'games': []
-                            }
-    if len(game_ids_ls) > 0:
-        for game_id in game_ids_ls:
-            game_df = games_df.loc[games_df.game_id == game_id]
-            game_rounds_df = games_rounds_df.loc[games_rounds_df.game_id == game_id]
-            game_dict = _create_game_dict_for_json(game_df, game_rounds_df)
-            games_data_json['games'].append(game_dict)
-
-        with open(full_path, 'w') as f:
-            json.dump(games_data_json, f)
-        f.close()
-        return full_path
-    else:
-        print("--No games in games dataframe, no JSON file created--")
-        return ""
-
-def _create_game_dict_for_json(game_input_df, game_rounds_df)->dict:
-    game_df = game_input_df.copy().reset_index()
-    rounds:list = []
-    
-    for index, row in game_rounds_df.iterrows():
-        round_dict = {'round': game_rounds_df.loc[index, 'round'], 
-                      'start_secs': int(row.start_secs), 
-                      'end_secs': int(row.end_secs), 
-                      'start_index': int(row.start_index),
-                      'end_index': int(row.end_index), 
-                      'character_1P': str(row.character_1P), 
-                      'character_2P': str(row.character_2P), 'winner': str(row.winner), 
-                      'winner_confidence': str(row.winner_confidence), 
-                      'winner_via_health': str(row.winner_via_health), 
-                      'winner_via_tmplate_match': str(row.winner_via_tmplate_match), 
-                      'perfect': bool(row.perfect), 'double_ko': bool(row.double_ko), 
-                      'time_out': bool(row.time_out), 'draw': bool(row.draw), 
-                      'inconclusive_data': bool(row.inconclusive_data), 
-                      'inconclusive_note': str(row.inconclusive_note)
-                      }
-        rounds.append(round_dict)
-    
-    game:dict = {'id': game_df.loc[0, 'game_id'], 
-                 'start_secs': int(game_df.loc[0, 'start_secs']), 
-                 'end_secs': int(game_df.loc[0, 'end_secs']), 
-                 'start_index': int(game_df.loc[0, 'start_index']), 
-                 'end_index': int(game_df.loc[0, 'end_index']), 
-                 'total_rounds': int(game_df.loc[0, 'total_rounds']), 
-                 'character_1P': game_df.loc[0, 'character_1P'], 
-                 'character_2P': game_df.loc[0, 'character_2P'], 
-                 'winner': game_df.loc[0, 'winner'], 
-                 'player_1_rounds_won': int(game_df.loc[0, 'player_1_rounds_won']), 
-                 'player_2_rounds_won': int(game_df.loc[0, 'player_2_rounds_won']), 
-                 'inconclusive_data': bool(game_df.loc[0, 'inconclusive_data']), 
-                 'inconclusive_note': game_df.loc[0, 'inconclusive_note'], 
-                 'rounds': rounds
-                 }
-    return game
 
 #Applies the scaling values based on FPS to the aggregate config values
 def convert_agg_config_vals_based_on_fps(agg_config:dict, vals_to_multiply:list, 
