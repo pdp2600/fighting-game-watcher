@@ -324,7 +324,7 @@ def detect_player_2_health(frame_img)->tuple[int,int]:
 #Used to check a video, against a set of template images
 #Returns data from with the template match score results
 def get_all_tmpl_scores_vid(vid_file_path:str, template_img_dicts:list, 
-                            min_val_mappings:dict, frames_per_sec:int = 4):
+                            min_val_mappings:dict, frames_per_sec:int = 2):
     tmp_match_scores_df = pd.DataFrame({})
     index_num:int = 1
     seconds:float = 0

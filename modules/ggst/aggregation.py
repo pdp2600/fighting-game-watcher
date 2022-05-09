@@ -10,7 +10,7 @@ writing aggregation results to a variety of output formats.
 import pandas as pd
 from collections import Counter
 
-def get_char_portrait_col_names(df_columns:list):
+def get_char_portrait_col_names(df_columns:list)->list:
     #Retrieves all the P1 & P2 character portrait match column names
     char_portrait_col_names:list = []
     for col_name in df_columns:

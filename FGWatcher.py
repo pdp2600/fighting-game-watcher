@@ -6,8 +6,6 @@ Fighting Game Watcher example script
 
 @author: PDP2600
 """
-#import numpy as np
-#import cv2
 import os
 #Only works when this python file is run or run/imported by another python file
 #wd_path = os.path.dirname(__file__)

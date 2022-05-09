@@ -20,8 +20,7 @@ import extraction as ex
 import aggregation as agg
 import output as out
 
-##########
-##########Start of changes May 8th 2:58pm
+
 def _no_duel_number_matches(match_scores:dict)-> bool:
     total_duel_num_score = match_scores['Starter_Number_1']
     total_duel_num_score += match_scores['Starter_Number_2']
@@ -247,9 +246,8 @@ def get_player_win_template_data(video_path:str, ggst_data_df, rounds_df,
                 vidcap.set(cv2.CAP_PROP_POS_MSEC,seconds*1000)
                 hasFrame,image = vidcap.read()
                 if is_verbose:
-                    print("""Checking 1P/2P Win Templates | Checking Time: 
-                          {}secs, Frame: {} (in secs)... """.format(int(seconds), 
-                                                                    seconds))
+                    print("Checking 1P/2P Win Templates | Checking Time: {}secs, Frame: {} (in secs)... "
+                          .format(int(seconds), seconds))
                 if hasFrame:
                     vetted_score = vet_match_score(image, 
                                                    img_dict['img_objs']['1P_Win'], 
@@ -262,29 +260,28 @@ def get_player_win_template_data(video_path:str, ggst_data_df, rounds_df,
                                                    min_mappings)
                     ggst_new_data_df.loc[index, 'Ender_2P_Win'] = vetted_score
     return ggst_new_data_df
-##########End of changes May 8th 2:58pm
-##########
 
 #When there is adequate data, the char match is predicted & reduced to those two chars
 def _get_predict_chars_dict_ls(ggst_char_pred_df, all_img_dicts:list, 
-                               min_char_delta:float):
-    char_portraits_agg_ls = agg.get_char_portrait_col_names(list(ggst_char_pred_df))
-    player_1_characters_ls = [x for x in char_portraits_agg_ls if '1P_Portrait' in x]
-    player_2_characters_ls = [x for x in char_portraits_agg_ls if '2P_Portrait' in x]
+                               min_char_delta:float)->list:
+    char_portraits_agg:list = agg.get_char_portrait_col_names(list(ggst_char_pred_df))
+    player_1_characters = [x for x in char_portraits_agg if '1P_Portrait' in x]
+    player_2_characters = [x for x in char_portraits_agg if '2P_Portrait' in x]
     
-    player_1_char = agg.get_character_used(ggst_char_pred_df, player_1_characters_ls, 
+    player_1_char = agg.get_character_used(ggst_char_pred_df, player_1_characters, 
                                            min_char_delta)
-    player_2_char = agg.get_character_used(ggst_char_pred_df, player_2_characters_ls, 
+    player_2_char = agg.get_character_used(ggst_char_pred_df, player_2_characters, 
                                            min_char_delta)
     if (player_1_char == 'Unknown') or (player_2_char == 'Unknown'):
         return all_img_dicts
     else:
-        new_img_dict_ls = []
+        new_img_dicts:list = []
         for img_dict in all_img_dicts:
-            if ((img_dict['Name'] == player_1_char) or (img_dict['Name'] == player_2_char)):
-                new_img_dict_ls.append(img_dict)
+            if ((img_dict['Name'] == player_1_char) or 
+                (img_dict['Name'] == player_2_char)):
+                new_img_dicts.append(img_dict)
                 
-        return new_img_dict_ls
+        return new_img_dicts
 
 #2nd phase of extratction checking for characters played & items related to player health
 #Checks frames based on Round atart & end established in the phase 1 extract/aggregation
@@ -292,27 +289,28 @@ def get_in_round_data(video_path:str, ggst_data_df, rounds_df,
                       char_img_dicts:list, min_mappings:dict, 
                       char_pred_frame_buffer:int, min_char_delta:float, 
                       post_ender_health_buffer:int, is_verbose:bool=False):
-    ggst_new_data_df = _set_in_round_cols_to_zero(ggst_data_df.copy(), char_img_dicts)
-    all_img_dicts:list = char_img_dicts
+    ggst_new_data_df = _set_in_round_cols_to_zero(ggst_data_df.copy(), 
+                                                  char_img_dicts)
+    all_img_dicts:list = char_img_dicts.copy()
     all_img_dicts = ex.load_tmp_imgs(all_img_dicts)
     vidcap = cv2.VideoCapture(video_path)    
     for j, row in rounds_df.iterrows():
-        start_index = row.start_index
-        end_index = row.end_index
-        chars_predicted = False
+        start_index:int = row.start_index
+        end_index:int = row.end_index
+        chars_predicted:bool = False
         img_dicts:list = all_img_dicts.copy()
         #Only run template matching when a round has a defined start & end index
         if (start_index != -1) and (end_index != -1):
-            #April 5th expanded the data rows by health post ender buffer 
             if len(ggst_new_data_df) > (end_index + post_ender_health_buffer):
                 end_index = end_index + post_ender_health_buffer
             ggst_round_data_df = ggst_new_data_df.loc[start_index:end_index]
             for index, row in ggst_round_data_df.iterrows():
-                seconds = row.Frame_Number_secs
+                seconds:float = row.Frame_Number_secs
                 vidcap.set(cv2.CAP_PROP_POS_MSEC,seconds*1000)
                 hasFrame,image = vidcap.read()
                 if is_verbose:
-                    print("Char Portraits//Health | Checking Time: {}secs, Frame: {} (in secs)... ".format(int(seconds), seconds))            
+                    print("Char Portraits//Health | Checking Time: {}secs, Frame: {} (in secs)... "
+                          .format(int(seconds), seconds))            
                 if hasFrame:
                     if ((chars_predicted != True) and 
                         ((index - start_index) > char_pred_frame_buffer)):
@@ -321,10 +319,9 @@ def get_in_round_data(video_path:str, ggst_data_df, rounds_df,
                                                                all_img_dicts, 
                                                                min_char_delta)
                         chars_predicted = True if len(img_dicts) < 3 else False
-                    #Itteration through all image dicts or predicted char image dicts
+
                     for img_dict in img_dicts:
                         dict_name:str = img_dict['Name']
-                        #Creating a list of the dict keys pretaining to templateimage paths
                         template_img_keys = list(img_dict['img_objs'].keys())
                         #Running template matching on every image in the dict
                         for tmpl_img_key in template_img_keys:                        
@@ -334,7 +331,7 @@ def get_in_round_data(video_path:str, ggst_data_df, rounds_df,
                                                     tmpl_img_key, img_dict, 
                                                     min_mappings)
                             ggst_new_data_df.loc[index, col_name] = score
-                    #Detecting 1P & 2P health bars
+                    #Detecting 1P & 2P health bar values
                     (high_health_1P, low_health_1P) = ex.detect_player_1_health(image)
                     (high_health_2P, low_health_2P) = ex.detect_player_2_health(image)        
                     ggst_new_data_df.loc[index, '1P_High_Health'] = high_health_1P
@@ -384,10 +381,11 @@ def correct_game_scores(games_df, rounds_df):
     else:
         return games_df
 
-#Extracts only round/game start/end times (games may not be able to be accurately aggregated)
+#Extracts only round/game start/end times (games possibly may not be able to be accurately aggregated)
 def extract_match_video_timecodes_only(video_path:str, fps_val:int, config, 
-                                       verbose_log:bool=False)-> str:
-    vid_filename = video_path.split('\\')[-1]
+                                       verbose_log:bool=False)-> tuple[str,int,
+                                                                       int]:
+    vid_filename:str = video_path.split('\\')[-1]
     new_agg_config = agg.convert_agg_config_vals_based_on_fps(config.agg_config_4fps, 
                                                               config.fps_scaling_vals_ls, 
                                                               config.plus_one_vals_ls, 
@@ -405,11 +403,13 @@ def extract_match_video_timecodes_only(video_path:str, fps_val:int, config,
     games_agg_df = agg.aggregate_into_games(games_by_rounds_df, anomallies_df)
     games_agg_df = validate_draw_game_results(games_agg_df, games_by_rounds_df)
 
-    output_name = vid_filename.split('.')[0][0:25].replace(' ', '_')
-    output_folder = out.create_csv_output_files(ggst_vid_data_df, games_agg_df, 
-                                                games_by_rounds_df, anomallies_df, 
-                                                output_name, create_json = True, 
-                                                orignal_vid = vid_filename)    
+    output_name:str = vid_filename.split('.')[0][0:25].replace(' ', '_')
+    output_folder:str = out.create_csv_output_files(ggst_vid_data_df, 
+                                                    games_agg_df, 
+                                                    games_by_rounds_df, 
+                                                    anomallies_df, output_name, 
+                                                    create_json = True, 
+                                                    orignal_vid = vid_filename)    
     #For playlist creation, requires video_path to be the full path of video
     out.create_round_based_vlc_playlist(games_by_rounds_df, ggst_vid_data_df, 
                                         video_path, output_folder, anomallies_df)
@@ -424,16 +424,18 @@ def extract_match_video_timecodes_only(video_path:str, fps_val:int, config,
     end_time = datetime.now()
     vid_delta = (end_time - total_start).seconds
     video_length = out.get_video_duration(ggst_vid_data_df)
-    print("Total extraction/aggregation processing time was {} seconds".format(vid_delta))
+    print("Total extraction/aggregation processing time was {} seconds"
+          .format(vid_delta))
     print("Total length of video process was {} seconds.".format(video_length))
-    return output_folder
+    return output_folder, vid_delta, video_length
 
 #Approach to combine extraction & aggregation to limit unnecessary template matching
 #Round Start/End templates found 1st, processed in round data, then those bounaries
 #are used to target other template matching to limit the number of frames to check
 def layered_extract_and_aggregate_video(video_path:str, fps_val:int, config, 
-                                        verbose_log:bool=False)-> str:
-    vid_filename = video_path.split('\\')[-1]
+                                        verbose_log:bool=False)-> tuple[str,int,
+                                                                        int]:
+    vid_filename:str = video_path.split('\\')[-1]
     new_agg_config = agg.convert_agg_config_vals_based_on_fps(config.agg_config_4fps, 
                                                               config.fps_scaling_vals_ls, 
                                                               config.plus_one_vals_ls, 
@@ -445,7 +447,8 @@ def layered_extract_and_aggregate_video(video_path:str, fps_val:int, config,
                                                      new_agg_config['times_up_to_draw_frame_buffer'], 
                                                      frames_per_sec = fps_val, 
                                                      is_verbose=verbose_log)
-    consolidated_rounds_df = agg.aggregate_into_rounds(ggst_vid_data_df, new_agg_config)
+    consolidated_rounds_df = agg.aggregate_into_rounds(ggst_vid_data_df, 
+                                                       new_agg_config)
     ggst_vid_data_df = get_in_round_data(video_path, ggst_vid_data_df, 
                                          consolidated_rounds_df, 
                                          config.char_templ_img_dicts_ls, 
@@ -473,11 +476,13 @@ def layered_extract_and_aggregate_video(video_path:str, fps_val:int, config,
     games_agg_df = validate_draw_game_results(games_agg_df, games_by_rounds_df)
     games_agg_df = correct_game_scores(games_agg_df, games_by_rounds_df)
     
-    output_name = vid_filename.split('.')[0][0:25].replace(' ', '_')
-    output_folder = out.create_csv_output_files(ggst_vid_data_df, games_agg_df, 
-                                                games_by_rounds_df, anomallies_df, 
-                                                output_name, create_json = True, 
-                                                orignal_vid = vid_filename)
+    output_name:str = vid_filename.split('.')[0][0:25].replace(' ', '_')
+    output_folder:str = out.create_csv_output_files(ggst_vid_data_df, 
+                                                    games_agg_df, 
+                                                    games_by_rounds_df, 
+                                                    anomallies_df, output_name, 
+                                                    create_json = True, 
+                                                    orignal_vid = vid_filename)
     #For playlist creation, requires video_path to be the full path of video
     out.create_round_based_vlc_playlist(games_by_rounds_df, ggst_vid_data_df, 
                                         video_path, output_folder, anomallies_df)
@@ -490,23 +495,26 @@ def layered_extract_and_aggregate_video(video_path:str, fps_val:int, config,
     end_time = datetime.now()
     vid_delta = (end_time - total_start).seconds
     video_length = out.get_video_duration(ggst_vid_data_df)
-    print("Total extraction/aggregation processing time was {} seconds".format(vid_delta))
+    print("Total extraction/aggregation processing time was {} seconds"
+          .format(vid_delta))
     print("Total length of video process was {} seconds.".format(video_length))
-    return output_folder
+    return output_folder, vid_delta, video_length
 
 def brute_force_extract_and_aggregate_video(video_path:str, fps_val:int, config,
-                                            verbose_log:bool=False)-> str:
-    vid_filename = video_path.split('\\')[-1]
-    #Loading template images & storing them in memory
+                                            verbose_log:bool=False
+                                            )-> tuple[str,int,int]:
+    vid_filename:str = video_path.split('\\')[-1]
     config.templ_img_dicts_ls = ex.load_tmp_imgs(config.templ_img_dicts_ls)
     start_time = datetime.now()
-    ggst_vid_data_df = ex.get_all_tmpl_scores_vid(video_path, config.templ_img_dicts_ls, 
+    ggst_vid_data_df = ex.get_all_tmpl_scores_vid(video_path, 
+                                                  config.templ_img_dicts_ls, 
                                                   config.templ_img_min_val_mappings, 
                                                   frames_per_sec = fps_val)
     end_time = datetime.now()
     vid_delta = (end_time - start_time).seconds
     video_length = out.get_video_duration(ggst_vid_data_df)
-    print("Total extraction processing time was {} seconds (video source)".format(vid_delta))
+    print("Total extraction processing time was {} seconds (video source)"
+          .format(vid_delta))
     print("Total length of video process was {} seconds.".format(video_length))
     new_agg_config = agg.convert_agg_config_vals_based_on_fps(config.agg_config_4fps, 
                                                               config.fps_scaling_vals_ls, 
@@ -527,11 +535,13 @@ def brute_force_extract_and_aggregate_video(video_path:str, fps_val:int, config,
     games_agg_df = validate_draw_game_results(games_agg_df, games_by_rounds_df)
     games_agg_df = correct_game_scores(games_agg_df, games_by_rounds_df)
     
-    output_name = vid_filename.split('.')[0][0:25]
-    output_folder = out.create_csv_output_files(ggst_vid_data_df, games_agg_df, 
-                                                games_by_rounds_df, anomallies_df, 
-                                                output_name, create_json = True, 
-                                                orignal_vid = vid_filename)
+    output_name:str = vid_filename.split('.')[0][0:25]
+    output_folder:str = out.create_csv_output_files(ggst_vid_data_df, 
+                                                    games_agg_df, 
+                                                    games_by_rounds_df, 
+                                                    anomallies_df, output_name, 
+                                                    create_json = True, 
+                                                    orignal_vid = vid_filename)
     #For playlist creation, requires video_path to be the full path of video
     full_vid_path = "{}{}".format(os.getcwd(), video_path)
     out.create_round_based_vlc_playlist(games_by_rounds_df, ggst_vid_data_df, 
@@ -544,4 +554,4 @@ def brute_force_extract_and_aggregate_video(video_path:str, fps_val:int, config,
                                        anomallies_df=anomallies_df)
     out.create_game_based_yt_chapters(games_agg_df, output_folder, 
                                       anomallies_df=anomallies_df)
-    return output_folder
+    return output_folder, vid_delta, video_length
