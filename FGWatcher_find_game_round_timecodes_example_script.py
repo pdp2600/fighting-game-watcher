@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun May  8 19:04:15 2022
+Created on Mon May  9 15:18:03 2022
 
-Fighting Game Watcher example script for running layered extract & aggregation 
-processing function. 
+Fighting Game Watcher example script for running function which only extracts
+round starters/enders (No character, or winner data). Which are for finding the 
+video timecodes of the start of games & rounds, which are generated into VLC
+custom bookmark playlists & YouTube chapter text. 
 
-Wriiten to be able to batch process multiple videos
+Written to be able to batch process multiple videos
 
 @author: PDP2600
 """
@@ -56,11 +58,11 @@ def main():
     for video in videos:
         vid_path:str = "{}\\{}".format(vid_dir, video)
         processing_data:dict = {}
-        fpath, ptime, vlen = ctrl.layered_extract_and_aggregate_video(vid_path, 
-                                                                      fps_val, 
-                                                                      conf, 
-                                                                      verbose_log=
-                                                                      True)
+        fpath, ptime, vlen = ctrl.extract_match_video_timecodes_only(vid_path, 
+                                                                     fps_val, 
+                                                                     conf, 
+                                                                     verbose_log=
+                                                                     True)
         processing_data['Vid_Name'] = video.split('\\')[-1].split('.')[0]
         processing_data['Vid_Path'] = vid_path
         processing_data['Processing_Time'] = int(ptime)
