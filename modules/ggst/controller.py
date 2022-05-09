@@ -426,7 +426,7 @@ def extract_match_video_timecodes_only(video_path:str, fps_val:int, config,
     video_length = out.get_video_duration(ggst_vid_data_df)
     print("Total extraction/aggregation processing time was {} seconds"
           .format(vid_delta))
-    print("Total length of video process was {} seconds.".format(video_length))
+    print("Total length of video processed was {} seconds.".format(video_length))
     return output_folder, vid_delta, video_length
 
 #Approach to combine extraction & aggregation to limit unnecessary template matching
@@ -497,7 +497,7 @@ def layered_extract_and_aggregate_video(video_path:str, fps_val:int, config,
     video_length = out.get_video_duration(ggst_vid_data_df)
     print("Total extraction/aggregation processing time was {} seconds"
           .format(vid_delta))
-    print("Total length of video process was {} seconds.".format(video_length))
+    print("Total length of video processed was {} seconds.".format(video_length))
     return output_folder, vid_delta, video_length
 
 def brute_force_extract_and_aggregate_video(video_path:str, fps_val:int, config,
@@ -515,7 +515,7 @@ def brute_force_extract_and_aggregate_video(video_path:str, fps_val:int, config,
     video_length = out.get_video_duration(ggst_vid_data_df)
     print("Total extraction processing time was {} seconds (video source)"
           .format(vid_delta))
-    print("Total length of video process was {} seconds.".format(video_length))
+    print("Total length of video processed was {} seconds.".format(video_length))
     new_agg_config = agg.convert_agg_config_vals_based_on_fps(config.agg_config_4fps, 
                                                               config.fps_scaling_vals_ls, 
                                                               config.plus_one_vals_ls, 
