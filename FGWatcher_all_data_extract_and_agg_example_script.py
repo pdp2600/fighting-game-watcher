@@ -41,11 +41,11 @@ def main():
     videos:list = []
     processing_stats:list = []
 
-    videos.append('Test_Videos\\GGST-My-Day_2_Testament_matches_18mins-2022-03-29 17-39-38.mp4')
-    #videos.append('Test_Videos\\yt_dl\\Series E S1 FINALE.mp4')
-    #videos.append('Test_Videos\\My_Baiken_Matches_90_mins_2022-03-13_16-01-57.mp4')
+    #videos.append('Test_Videos\\GGST-My-Day_2_Testament_matches_18mins-2022-03-29 17-39-38.mp4')
+    videos.append('Test_Videos\\yt_dl\\Series E S1 FINALE.mp4')
+    videos.append('Test_Videos\\My_Baiken_Matches_90_mins_2022-03-13_16-01-57.mp4')
     #Recentish NLBC from YT, ~40mins
-    #videos.append('Test_Videos\\yt_dl\\NLBC 103 Top 16  Online  Tournament.mp4')
+    videos.append('Test_Videos\\yt_dl\\NLBC 103 Top 16  Online  Tournament.mp4')
     #videos.append('Test_Videos\\yt_dl\\NLBC 106 Top 8 Online Tournament.mp4')
     #videos.append('Test_Videos\\yt_dl\\NLBC 104 Top 8  Online  Tournament.mp4')
     #videos.append('Test_Videos\\yt_dl\\NLBC 103 Top 8  Online  Tournament.mp4')

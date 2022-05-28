@@ -22,20 +22,35 @@ import output as out
 
 
 def _no_duel_number_matches(match_scores:dict)-> bool:
+    """Returns whether every "Duel" number had match scores of 0.
+    -------------------------------------------------------------------------
+    -=match_scores=- Dict w/ "Duel" number match scores for a frame/row.
+    -------------------------------------------------------------------------
+    [-return-] Boolean value of if all the "Duel" number match scores are 0."""
     total_duel_num_score = match_scores['Starter_Number_1']
     total_duel_num_score += match_scores['Starter_Number_2']
     total_duel_num_score += match_scores['Starter_Number_3']
     return (total_duel_num_score == 0)
     
 def _no_starter_matches(match_scores:dict)-> bool:
+    """Returns whether every "Starter" template had a match score of 0.
+    -------------------------------------------------------------------------
+    -=match_scores=- Dict w/ "Duel" number match scores for a frame/row.
+    -------------------------------------------------------------------------
+    [-return-] Boolean value of if all the "Starter" match scores are 0."""
     total_starter_score = 0 if _no_duel_number_matches(match_scores) else 1
     total_starter_score += match_scores['Starter_Duel']
     total_starter_score += match_scores['Starter_Number_Final']
     total_starter_score += match_scores['Starter_Lets_Rock']
     return (total_starter_score == 0)
 
-#Creates a frame dict w/ all Starter & Ender scores set to 0 for 1st round of matching
 def _create_zero_scores_frame_dict(time_in_secs:float)-> dict:
+    """Creates a match score dict for a frame/row, w/ Starter/Ender scores set 
+    to zero.
+    -------------------------------------------------------------------------
+    -=match_scores=- Dict w/ "Duel" number match scores for a frame/row.
+    -------------------------------------------------------------------------
+    [-return-] Match score dict for a frame/row w/ scores set to zero."""
     return {'Time_in_Secs' : int(time_in_secs), 
             'Frame_Number_secs' : time_in_secs, 
             'Starter_Duel': 0, 'Starter_Number_1': 0, 'Starter_Number_2': 0, 
@@ -46,6 +61,11 @@ def _create_zero_scores_frame_dict(time_in_secs:float)-> dict:
             }
 
 def _set_duel_values_to_zero(match_scores:dict)-> dict:
+    """Resets all template match scores related to "Duel" matches, to 0.
+    -------------------------------------------------------------------------
+    -=match_scores=- Dict w/ "Duel" number match scores for a frame/row.
+    -------------------------------------------------------------------------
+    [-return-] Match score dict w/ "Duel" scores reset to 0."""
     new_match_scores:dict = match_scores.copy()
     new_match_scores['Starter_Duel'] = 0
     new_match_scores['Starter_Number_1'] = 0
@@ -59,16 +79,43 @@ def _set_duel_values_to_zero(match_scores:dict)-> dict:
 #score is not met for the category of template image.
 def vet_match_score(img, tmpl_img, tmpl_key:str, tmpl_dict:dict, 
                     min_mappings:dict)-> float:           
-    #Getting Template Match Score min/max w/ (x, y) location data
+    """Gets the template match score for a template in an image, & checks if 
+    the score meets the minimum for that specific or category of template.
+    -------------------------------------------------------------------------
+    -=img=- Frame image to check, read in using OpenCV (numpy image object).
+    -=tmpl_img=- Template image, read in using OpenCV (numpy image object).
+    -=tmpl_key=- The key used to identify the template image name.
+    -=tmpl_dict=- Dict associated with template image used.
+    -=min_mappings=- From the config file, defines a mapping between template 
+      image path key & the key used to store the minimum value for that 
+      specific template image or category of template image.
+    -------------------------------------------------------------------------
+    [-return-] Match score for template when it's above its minimum score, or 0."""
     (minVal, maxVal, minLoc, maxLoc) = ex.get_match_template_score(img, 
                                                                    tmpl_img, 
                                                                    tmpl_key)
-    #Only reporting scores which are over configureed minimums, otherwise it's 0
     return ex.check_min_match_val(tmpl_key, tmpl_dict, min_mappings, maxVal)
 
 def starter_ender_tmpl_scores_vid(vid_file_path:str, tmpl_img_dicts:list, 
                                   min_mappings:dict, draw_buffer:int, 
                                   frames_per_sec:int = 4, is_verbose:bool=False):
+    """Does template matching for all Starter/Ender related template images, 
+    for a video. Number of frames per second dictates granularity of processing.
+    -------------------------------------------------------------------------
+    -=vid_file_path=- Path of the video files' location (relative or absolute).
+    -=tmpl_img_dicts=- From the config file, a list of dicts used to define the 
+      template images & other properties like match score minimums.
+    -=min_mappings=- From the config file, defines a mapping between template 
+      image path key & the key used to store the minimum value for that 
+      specific template image or category of template image.
+    -=draw_buffer=- Config value, number of frames after "Times Up" Ender is 
+      detected to check for "Draw" Ender template.
+    -=frames_per_sec=- Number of frames per second to process. While it can be
+      a value between 1 to 60, 2 & 4 are what testing & tuning were based on.
+    -=is_verbose=- Whether progress updates are printed to console.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame w/ all the Starter/Ender template match scores for a 
+     video. Number of rows = Length of Video / (1 / frames_per_sec)"""
     template_img_dicts:list = ex.load_tmp_imgs(tmpl_img_dicts)
     tmp_match_scores_df = pd.DataFrame({})
     index_num:int = 0
@@ -124,23 +171,22 @@ def starter_ender_tmpl_scores_vid(vid_file_path:str, tmpl_img_dicts:list,
                                                                'Number_3', 
                                                                starter_dict, 
                                                                min_mappings)
-            #If there are no duel number matches, check for duel Final
             if (_no_duel_number_matches(match_scores)):
                 match_scores['Starter_Number_Final'] = vet_match_score(image, 
                                                                        num_final_img, 
                                                                        'Number_Final', 
                                                                        starter_dict, 
                                                                        min_mappings)
-                #When no round number matches, Duel match score is set to 0
+                #When "number" match scores are all 0, Duel score is reset to 0.
                 if match_scores['Starter_Number_Final'] == 0:
                     match_scores['Starter_Duel'] = 0
             
-            #Duel 1/2 is sometimes a false positive for Ender Times Up,
             match_scores['Ender_Times_Up'] = vet_match_score(image, times_up_img, 
                                                              'Times_Up', 
                                                              ender_dict, 
                                                              min_mappings)
-            #If Times Up is detected, reset Duel match scores to 0
+            #Duel 1/2 is sometimes a false positive for Ender Times Up,
+            #When Times Up is detected, reset Duel match scores to 0
             if match_scores['Ender_Times_Up'] > 0:
                 match_scores = _set_duel_values_to_zero(match_scores)
                 check_for_draw = True
@@ -164,8 +210,7 @@ def starter_ender_tmpl_scores_vid(vid_file_path:str, tmpl_img_dicts:list,
                                                                 'Perfect', 
                                                                 ender_dict, 
                                                                 min_mappings)
-                total_ender_scores = match_scores['Ender_Perfect']
-            
+                total_ender_scores = match_scores['Ender_Perfect']            
             if total_ender_scores == 0:
                 match_scores['Ender_Double_KO'] = vet_match_score(image, 
                                                                   double_ko_img, 
@@ -173,7 +218,6 @@ def starter_ender_tmpl_scores_vid(vid_file_path:str, tmpl_img_dicts:list,
                                                                   ender_dict, 
                                                                   min_mappings)
                 total_ender_scores = match_scores['Ender_Double_KO']
-            
             if total_ender_scores == 0 and match_scores['Ender_Times_Up'] == 0:
                 match_scores['Ender_Times_Up'] = vet_match_score(image, 
                                                                  times_up_img, 
@@ -183,29 +227,36 @@ def starter_ender_tmpl_scores_vid(vid_file_path:str, tmpl_img_dicts:list,
                 if match_scores['Ender_Times_Up'] > 0:
                     check_for_draw = True
                     frames_to_check_draw = draw_buffer
-            #Check for Draw if Times Up not detected & check_for_Draw flag active
             if (match_scores['Ender_Times_Up'] == 0) and check_for_draw:
                 match_scores['Ender_Draw'] = vet_match_score(image, draw_img, 
                                                              'Draw', ender_dict, 
                                                              min_mappings)
-
         match_scores['Game_UI_Timer_Outline'] = vet_match_score(image, 
                                                                 timer_ui_img, 
                                                                 'Timer_Outline', 
                                                                 ui_dict, 
                                                                 min_mappings)
-        
+
         tmp_match_scores_df = tmp_match_scores_df.append(pd.DataFrame(match_scores, 
-                                                                      index=[index_num]), 
+                                                                      index=
+                                                                      [index_num]), 
                                                          sort=False)
         index_num = index_num + 1
         seconds = seconds + frame_rate
         vidcap.set(cv2.CAP_PROP_POS_MSEC,seconds*1000)
         hasFrame,image = vidcap.read()
-    
+
     return tmp_match_scores_df
 
 def _set_in_round_cols_to_zero(ggst_data_df, char_img_dicts:list):
+    """Adds character portrait & health value columns w/ values of 0.
+    -------------------------------------------------------------------------
+    -=ggst_data_df=- DataFrame w/ template match scores that have been 
+      extracted.
+    -=char_img_dicts=- From config file, dicts related to character templates.
+    -------------------------------------------------------------------------
+    [-return-] Passed in DataFrame, w/ character portrait & health columns 
+     added, which are populated w/ placeholder values of 0."""
     ggst_zero_data_df = ggst_data_df.copy()
     for char_dict in char_img_dicts:
         char_P1_col_name = "{}_1P_Portrait".format(char_dict['Name'])
@@ -224,6 +275,28 @@ def get_player_win_template_data(video_path:str, ggst_data_df, rounds_df,
                                  ender_img_dict:dict, min_mappings:dict, 
                                  win_tmpl_buffer:int, frames_after_ender:int, 
                                  is_verbose:bool = False):
+    """Based on previous extracted template match scores, check for player win 
+    templates. Requires Starter/Ender processing results to be processed into 
+    consolidated round blocks. In practice, these templates are not found often, 
+    since players usually press buttons before these player win images show up.
+    -------------------------------------------------------------------------
+    -=video_path=- Path of the video files' location (relative or absolute).
+    -=ggst_data_df=- DataFrame w/ template match scores that have been 
+      extracted.
+    -=rounds_df=- DataFrame w/ consolidated round blocks.
+    -=ender_img_dict=- From the config file, defines Ender template images & 
+      minimums.
+    -=min_mappings=- From the config file, defines a mapping between template 
+      image path key & the key used to store the minimum value for that 
+      specific template image or category of template image.
+    -=win_tmpl_buffer=- Config value, how many frames after the ender ends to 
+      check for player win templates.
+    -=frames_after_ender=- Config value, how many frames past the end of the 
+      ender to start checking for player win templates.
+    -=is_verbose=- Whether progress updates are printed to console.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame w/ all the existing template match scores, added w/ 
+     the results of player win template matching."""
     ggst_new_data_df = ggst_data_df.copy()
     ggst_new_data_df['Ender_1P_Win'] = 0
     ggst_new_data_df['Ender_2P_Win'] = 0
@@ -261,9 +334,23 @@ def get_player_win_template_data(video_path:str, ggst_data_df, rounds_df,
                     ggst_new_data_df.loc[index, 'Ender_2P_Win'] = vetted_score
     return ggst_new_data_df
 
-#When there is adequate data, the char match is predicted & reduced to those two chars
 def _get_predict_chars_dict_ls(ggst_char_pred_df, all_img_dicts:list, 
                                min_char_delta:float)->list:
+    """When the character detection data so far for the round has sufficent 
+    data to predict the P1 & P2 characters being used, the template images used 
+    for character portrait matches is reduced to those 2 character (or 1 in the 
+    case of a mirror match). Optimization step for character portrait detection.
+    -------------------------------------------------------------------------
+    -=ggst_char_pred_df=- DataFrame w/ raw extracted data from the start of a 
+      round to the number of frames defined to be able to make confident 
+      character predictions.
+    -=all_img_dicts=- From config file, all character template image dicts.
+    -=min_char_delta=- Config value. Minimum difference in match score to 
+      decide if there's an undisputed character in the case of multiple 
+      characters detected for the same frame.
+    -------------------------------------------------------------------------
+    [-return-] List of character dicts. Is either all_img_dicts, or only the 
+     character dicts of the characters predicted for the given data."""
     char_portraits_agg:list = agg.get_char_portrait_col_names(list(ggst_char_pred_df))
     player_1_characters = [x for x in char_portraits_agg if '1P_Portrait' in x]
     player_2_characters = [x for x in char_portraits_agg if '2P_Portrait' in x]
@@ -283,12 +370,32 @@ def _get_predict_chars_dict_ls(ggst_char_pred_df, all_img_dicts:list,
                 
         return new_img_dicts
 
-#2nd phase of extratction checking for characters played & items related to player health
-#Checks frames based on Round atart & end established in the phase 1 extract/aggregation
 def get_in_round_data(video_path:str, ggst_data_df, rounds_df, 
                       char_img_dicts:list, min_mappings:dict, 
                       char_pred_frame_buffer:int, min_char_delta:float, 
                       post_ender_health_buffer:int, is_verbose:bool=False):
+    """Based on previous extracted template match scores, it checks the frames 
+    which belong to game rounds, & extracts player characters & health data.
+    -------------------------------------------------------------------------
+    -=video_path=- Path of the video files' location (relative or absolute).
+    -=ggst_data_df=- DataFrame w/ template match scores that have been 
+      extracted.
+    -=rounds_df=- DataFrame w/ consolidated round blocks.
+    -=char_img_dicts=- From config file, dicts related to character templates.
+    -=min_mappings=- From the config file, defines a mapping between template 
+      image path key & the key used to store the minimum value for that 
+      specific template image or category of template image.
+    -=char_pred_frame_buffer=- Config value, frames after start of round, to 
+      attempt to predict characters, for optimizing character portrait matches.
+    -=min_char_delta=- Config value. Minimum difference in match score to 
+      decide if there's an undisputed character in the case of multiple 
+      characters detected for the same frame.
+    -=post_ender_health_buffer=- Config value. Number of frames after the end 
+      of the ender to check health data to predict the round winner.
+    -=is_verbose=- Whether progress updates are printed to console.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame w/ all the existing template match scores, added w/ 
+     the results of player character template matches & health data extraction."""
     ggst_new_data_df = _set_in_round_cols_to_zero(ggst_data_df.copy(), 
                                                   char_img_dicts)
     all_img_dicts:list = char_img_dicts.copy()
@@ -341,10 +448,17 @@ def get_in_round_data(video_path:str, ggst_data_df, rounds_df,
                         
     return ggst_new_data_df
 
-#Used to validate that Draw game winner results are actual draws. Game draws are
-#very rare, & are usually due to there not being conclusive round data
-#If a game result isn't a Draw, game result changed to Unknown to better reflect the situation
 def validate_draw_game_results(games_df, rounds_df):
+    """Checks if game outcomes which are draws, are actual draw games. Draw 
+    games are very rare & are usually a result of there being inconclusive 
+    round outcome data. Changes false Draw outcomes to Unknown to better 
+    reflect the data.
+    -------------------------------------------------------------------------
+    -=games_df=- DataFrame w/ fully aggregated game data.
+    -=rounds_df=- DataFrame w/ fully aggregated round data.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame that's games_df, w/ any false 'Draw' outcomes changed 
+     to 'Unknown'."""
     draw_games_df = games_df.loc[games_df.winner == 'Draw']
     if len(draw_games_df) == 0:
         return games_df
@@ -362,8 +476,16 @@ def validate_draw_game_results(games_df, rounds_df):
                     
         return games_copy_df
 
-#For correcting Game score errors which can be resolved w/ the 1st being 3-0 round scores
 def correct_game_scores(games_df, rounds_df):
+    """Corrects game results which have impossible round scores for the best 2 
+    out of 3 default in GGST. Most common case this catches is 3-0 round win 
+    due to an incorrect winner predicted for one of the game's rounds.
+    -------------------------------------------------------------------------
+    -=games_df=- DataFrame w/ fully aggregated game data.
+    -=rounds_df=- DataFrame w/ fully aggregated round data.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame that's games_df, w/ invalid 3-0 outcomes being 
+     corrected to 2-1."""
     #Checking if there are any games with a 3-0 round score
     if (((len(games_df.loc[games_df.player_1_rounds_won > 2]) > 0) or 
         (len(games_df.loc[games_df.player_2_rounds_won > 2]) > 0))):
@@ -381,10 +503,24 @@ def correct_game_scores(games_df, rounds_df):
     else:
         return games_df
 
-#Extracts only round/game start/end times (games possibly may not be able to be accurately aggregated)
 def extract_match_video_timecodes_only(video_path:str, fps_val:int, config, 
-                                       verbose_log:bool=False)-> tuple[str,int,
-                                                                       int]:
+                                       verbose_log:bool=False
+                                       )-> tuple[str,int,int]:
+    """Extracts only round/game start/end times, & aggregates into rounds & 
+    games as best as it can w/ the given data. Main use is for creating VLC 
+    playlist bookmarks or YouTube chapters, w/ the round/game start times for 
+    video editing or for manual viewing, w/ the quicker processing @ the 
+    expense of other data points like characters used & predicted winners.
+    -------------------------------------------------------------------------
+    -=video_path=- Path of the video files' location (should be the full path 
+      so VLC playlist created works correctly).
+    -=fps_val=- Number of frames per second to process. While it can be a value 
+      between 1 to 60, 2 & 4 are what testing & tuning were based on.
+    -=config=- All config values imported from the config file.
+    -=verbose_log=- Whether progress updates are printed to console.
+    -------------------------------------------------------------------------
+    [-return-] Tuple which is the created folder w/ the generated files, total 
+     processing time, & length/duration of the video processed."""
     vid_filename:str = video_path.split('\\')[-1]
     new_agg_config = agg.convert_agg_config_vals_based_on_fps(config.agg_config_4fps, 
                                                               config.fps_scaling_vals_ls, 
@@ -399,27 +535,27 @@ def extract_match_video_timecodes_only(video_path:str, fps_val:int, config,
                                                      is_verbose=verbose_log)
     consolidated_rounds_df = agg.aggregate_into_rounds(ggst_vid_data_df, 
                                                        new_agg_config)
-    games_by_rounds_df, anomallies_df = agg.classify_rounds_into_games(consolidated_rounds_df)
-    games_agg_df = agg.aggregate_into_games(games_by_rounds_df, anomallies_df)
+    games_by_rounds_df, anomalies_df = agg.classify_rounds_into_games(consolidated_rounds_df)
+    games_agg_df = agg.aggregate_into_games(games_by_rounds_df, anomalies_df)
     games_agg_df = validate_draw_game_results(games_agg_df, games_by_rounds_df)
 
     output_name:str = vid_filename.split('.')[0][0:25].replace(' ', '_')
     output_folder:str = out.create_csv_output_files(ggst_vid_data_df, 
                                                     games_agg_df, 
                                                     games_by_rounds_df, 
-                                                    anomallies_df, output_name, 
+                                                    anomalies_df, output_name, 
                                                     create_json = True, 
                                                     orignal_vid = vid_filename)    
     #For playlist creation, requires video_path to be the full path of video
     out.create_round_based_vlc_playlist(games_by_rounds_df, ggst_vid_data_df, 
-                                        video_path, output_folder, anomallies_df)
+                                        video_path, output_folder, anomalies_df)
     out.create_game_based_vlc_playlist(games_agg_df, ggst_vid_data_df, 
-                                       video_path, output_folder, anomallies_df)
+                                       video_path, output_folder, anomalies_df)
     out.create_round_based_yt_chapters(games_by_rounds_df, output_folder, 
-                                       anomallies_df=anomallies_df, 
+                                       anomalies_df=anomalies_df, 
                                        prepend_id=True)
     out.create_game_based_yt_chapters(games_agg_df, output_folder, 
-                                      anomallies_df=anomallies_df, 
+                                      anomalies_df=anomalies_df, 
                                       prepend_id=True)
     end_time = datetime.now()
     vid_delta = (end_time - total_start).seconds
@@ -429,12 +565,24 @@ def extract_match_video_timecodes_only(video_path:str, fps_val:int, config,
     print("Total length of video processed was {} seconds.".format(video_length))
     return output_folder, vid_delta, video_length
 
-#Approach to combine extraction & aggregation to limit unnecessary template matching
-#Round Start/End templates found 1st, processed in round data, then those bounaries
-#are used to target other template matching to limit the number of frames to check
 def layered_extract_and_aggregate_video(video_path:str, fps_val:int, config, 
-                                        verbose_log:bool=False)-> tuple[str,int,
-                                                                        int]:
+                                        verbose_log:bool=False
+                                        )-> tuple[str,int,int]:
+    """Approach which combines & layers extraction & aggregation, to limit 
+    unnecessary template matching, & run more optimally. 1st Round Start/End 
+    templates are detected, processed into round blocks. Then the round 
+    boundaries used to target the other template matching, limiting the number 
+    of frames to check.
+    -------------------------------------------------------------------------
+    -=video_path=- Path of the video files' location (should be the full path 
+      so VLC playlist created works correctly).
+    -=fps_val=- Number of frames per second to process. While it can be a value 
+      between 1 to 60, 2 & 4 are what testing & tuning were based on.
+    -=config=- All config values imported from the config file.
+    -=verbose_log=- Whether progress updates are printed to console.
+    -------------------------------------------------------------------------
+    [-return-] Tuple which is the created folder w/ the generated files, total 
+     processing time, & length/duration of the video processed."""
     vid_filename:str = video_path.split('\\')[-1]
     new_agg_config = agg.convert_agg_config_vals_based_on_fps(config.agg_config_4fps, 
                                                               config.fps_scaling_vals_ls, 
@@ -470,9 +618,9 @@ def layered_extract_and_aggregate_video(video_path:str, fps_val:int, config,
     round_winners_df = agg.extract_round_winner(ggst_vid_data_df, 
                                                 characters_in_rounds_df, 
                                                 new_agg_config)
-    games_by_rounds_df, anomallies_df = agg.classify_rounds_into_games(round_winners_df)
+    games_by_rounds_df, anomalies_df = agg.classify_rounds_into_games(round_winners_df)
     
-    games_agg_df = agg.aggregate_into_games(games_by_rounds_df, anomallies_df)
+    games_agg_df = agg.aggregate_into_games(games_by_rounds_df, anomalies_df)
     games_agg_df = validate_draw_game_results(games_agg_df, games_by_rounds_df)
     games_agg_df = correct_game_scores(games_agg_df, games_by_rounds_df)
     
@@ -480,18 +628,18 @@ def layered_extract_and_aggregate_video(video_path:str, fps_val:int, config,
     output_folder:str = out.create_csv_output_files(ggst_vid_data_df, 
                                                     games_agg_df, 
                                                     games_by_rounds_df, 
-                                                    anomallies_df, output_name, 
+                                                    anomalies_df, output_name, 
                                                     create_json = True, 
                                                     orignal_vid = vid_filename)
     #For playlist creation, requires video_path to be the full path of video
     out.create_round_based_vlc_playlist(games_by_rounds_df, ggst_vid_data_df, 
-                                        video_path, output_folder, anomallies_df)
+                                        video_path, output_folder, anomalies_df)
     out.create_game_based_vlc_playlist(games_agg_df, ggst_vid_data_df, 
-                                       video_path, output_folder, anomallies_df)
+                                       video_path, output_folder, anomalies_df)
     out.create_round_based_yt_chapters(games_by_rounds_df, output_folder, 
-                                       anomallies_df=anomallies_df)
+                                       anomalies_df=anomalies_df)
     out.create_game_based_yt_chapters(games_agg_df, output_folder, 
-                                      anomallies_df=anomallies_df)
+                                      anomalies_df=anomalies_df)
     end_time = datetime.now()
     vid_delta = (end_time - total_start).seconds
     video_length = out.get_video_duration(ggst_vid_data_df)
@@ -503,6 +651,24 @@ def layered_extract_and_aggregate_video(video_path:str, fps_val:int, config,
 def brute_force_extract_and_aggregate_video(video_path:str, fps_val:int, config,
                                             verbose_log:bool=False
                                             )-> tuple[str,int,int]:
+    """Every frame of the video, has template match applied to every single 
+    template image defined in a list of template image dicts, defined in the 
+    config file. Then the raw match scores are aggregated. It's use is for 
+    testing template matching, since it's open ended input design allows you to 
+    add as many dicts as needed for template matching. In practical application, 
+    it shouldn't be used as it runs more than 2 times as long as the layered 
+    extraction & aggregation function (last benchmarks: for every 1 sec of 
+    video processing takes between 10.5-11.5 secs).
+    -------------------------------------------------------------------------
+    -=video_path=- Path of the video files' location (should be the full path 
+      so VLC playlist created works correctly).
+    -=fps_val=- Number of frames per second to process. While it can be a value 
+      between 1 to 60, 2 & 4 are what testing & tuning were based on.
+    -=config=- All config values imported from the config file.
+    -=verbose_log=- Whether progress updates are printed to console.
+    -------------------------------------------------------------------------
+    [-return-] Tuple which is the created folder w/ the generated files, total 
+     processing time, & length/duration of the video processed."""
     vid_filename:str = video_path.split('\\')[-1]
     config.templ_img_dicts_ls = ex.load_tmp_imgs(config.templ_img_dicts_ls)
     start_time = datetime.now()
@@ -530,8 +696,8 @@ def brute_force_extract_and_aggregate_video(video_path:str, fps_val:int, config,
                                                 characters_in_rounds_df, 
                                                 new_agg_config)
 
-    games_by_rounds_df, anomallies_df = agg.classify_rounds_into_games(round_winners_df)
-    games_agg_df = agg.aggregate_into_games(games_by_rounds_df, anomallies_df)
+    games_by_rounds_df, anomalies_df = agg.classify_rounds_into_games(round_winners_df)
+    games_agg_df = agg.aggregate_into_games(games_by_rounds_df, anomalies_df)
     games_agg_df = validate_draw_game_results(games_agg_df, games_by_rounds_df)
     games_agg_df = correct_game_scores(games_agg_df, games_by_rounds_df)
     
@@ -539,19 +705,19 @@ def brute_force_extract_and_aggregate_video(video_path:str, fps_val:int, config,
     output_folder:str = out.create_csv_output_files(ggst_vid_data_df, 
                                                     games_agg_df, 
                                                     games_by_rounds_df, 
-                                                    anomallies_df, output_name, 
+                                                    anomalies_df, output_name, 
                                                     create_json = True, 
                                                     orignal_vid = vid_filename)
     #For playlist creation, requires video_path to be the full path of video
     full_vid_path = "{}{}".format(os.getcwd(), video_path)
     out.create_round_based_vlc_playlist(games_by_rounds_df, ggst_vid_data_df, 
                                         full_vid_path, output_folder, 
-                                        anomallies_df)
+                                        anomalies_df)
     out.create_game_based_vlc_playlist(games_agg_df, ggst_vid_data_df, 
                                        full_vid_path, output_folder, 
-                                       anomallies_df)
+                                       anomalies_df)
     out.create_round_based_yt_chapters(games_by_rounds_df, output_folder, 
-                                       anomallies_df=anomallies_df)
+                                       anomalies_df=anomalies_df)
     out.create_game_based_yt_chapters(games_agg_df, output_folder, 
-                                      anomallies_df=anomallies_df)
+                                      anomalies_df=anomalies_df)
     return output_folder, vid_delta, video_length

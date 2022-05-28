@@ -13,7 +13,7 @@ Written to be able to batch process multiple videos
 """
 import os
 wd_path = os.path.dirname(__file__)
-#If running code from IDE & not by runnign the file via command line, put full 
+#If running code from IDE & not by running the file via command line, put full 
 #path of FGC_Stream_Reader directory below so it can be set as the working dir
 #wd_path = "D:\\Libraries\\Documents\\Data_Science\\Projects\\FGC_Stream_Reader"
 os.chdir(wd_path)

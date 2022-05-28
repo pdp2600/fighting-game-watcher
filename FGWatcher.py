@@ -79,43 +79,48 @@ for video in videos_ls:
 
 
 ###############################################################################
-"""
+
 ##A la Carte testing of the VLC playlist creation, it'll be included into the 
 ##stand alone function for just starter/ender round/game data. Might create a
 ##html file generator for a YT link, need to check out how chapters on posted YT
 ##videos work, and if that can be automated to generate
+"""
+import pandas as pd
 
-vidpl_rounds_df = pd.read_csv('output\\2022-4-11_8-25-4_Series_E_Sports_Arena_Wee\\Round_data_Series_E_Sports_Arena_Wee_2022-4-11_8-25-4.csv')
-vidpl_games_df = pd.read_csv('output\\2022-4-11_8-25-4_Series_E_Sports_Arena_Wee\\Game_data_Series_E_Sports_Arena_Wee_2022-4-11_8-25-4.csv')
-vidpl_anomallies_df = pd.read_csv('output\\2022-4-11_8-25-4_Series_E_Sports_Arena_Wee\\Anomalous_rounds_Series_E_Sports_Arena_Wee_2022-4-11_8-25-4.csv')
-vidpl_vid_data_df = pd.read_csv('output\\2022-4-11_8-25-4_Series_E_Sports_Arena_Wee\\Visual_detection_data_Series_E_Sports_Arena_Wee_2022-4-11_8-25-4.csv')
-file_path = "D:\\Libraries\\Documents\\Data_Science\\Projects\\FGC_Stream_Reader\\Test_Videos\\yt_dl\\Series E Sports Arena Week 11.mp4"
-output_folder = "D:\\Libraries\\Documents\\Data_Science\\Projects\\FGC_Stream_Reader\\output\\2022-4-11_8-25-4_Series_E_Sports_Arena_Wee\\"
+vidpl_rounds_df = pd.read_csv('output\\2022-5-19_20-6-56_Can_Opener_Vol_36_GGST\\Round_data_Can_Opener_Vol_36_GGST_2022-5-19_20-6-56.csv')
+vidpl_games_df = pd.read_csv('output\\2022-5-19_20-6-56_Can_Opener_Vol_36_GGST\\Game_data_Can_Opener_Vol_36_GGST_2022-5-19_20-6-56.csv')
+vidpl_anomallies_df = pd.read_csv('output\\2022-5-19_20-6-56_Can_Opener_Vol_36_GGST\\Anomalous_rounds_Can_Opener_Vol_36_GGST_2022-5-19_20-6-56.csv')
+vidpl_vid_data_df = pd.read_csv('output\\2022-5-19_20-6-56_Can_Opener_Vol_36_GGST\\Visual_detection_data_Can_Opener_Vol_36_GGST_2022-5-19_20-6-56.csv')
+file_path = "D:\\Libraries\\Documents\\Data_Science\\Projects\\FGC_Stream_Reader\\Test_Videos\\yt_dl\\Can Opener Vol 36 GGST.mp4"
+output_folder = "D:\\Libraries\\Documents\\Data_Science\\Projects\\FGC_Stream_Reader\\output\\2022-5-19_20-6-56_Can_Opener_Vol_36_GGST\\"
 
-playlist_file = create_round_based_vlc_playlist(vidpl_rounds_df, vidpl_vid_data_df, 
-                                                file_path, output_folder, 
-                                                vidpl_anomallies_df)
+playlist_file = ctrl.out.create_round_based_vlc_playlist(vidpl_rounds_df, 
+                                                     vidpl_vid_data_df, 
+                                                     file_path, output_folder, 
+                                                     vidpl_anomallies_df)
 print("{}".format(playlist_file))
-playlist_file = create_game_based_vlc_playlist(vidpl_games_df, vidpl_vid_data_df, 
-                                               file_path, output_folder, 
-                                               vidpl_anomallies_df)
+playlist_file = ctrl.out.create_game_based_vlc_playlist(vidpl_games_df, 
+                                                    vidpl_vid_data_df, 
+                                                    file_path, output_folder, 
+                                                    vidpl_anomallies_df)
 print("{}".format(playlist_file))
 """
 ###############################################################################
 ##A la carte test of the YouTube Chapter format txt file generation
 """
-ytch_rounds_df = pd.read_csv('output\\2022-4-15_4-57-19_My_Baiken_Matches_90_mins\\Round_data_My_Baiken_Matches_90_mins_2022-4-15_4-57-19.csv')
-ytch_games_df = pd.read_csv('output\\2022-4-15_4-57-19_My_Baiken_Matches_90_mins\\Game_data_My_Baiken_Matches_90_mins_2022-4-15_4-57-19.csv')
-ytch_anomallies_df = pd.DataFrame({})
+ytch_rounds_df = pd.read_csv('output\\2022-5-19_20-6-56_Can_Opener_Vol_36_GGST\\Round_data_Can_Opener_Vol_36_GGST_2022-5-19_20-6-56.csv')
+ytch_games_df = pd.read_csv('output\\2022-5-19_20-6-56_Can_Opener_Vol_36_GGST\\Game_data_Can_Opener_Vol_36_GGST_2022-5-19_20-6-56.csv')
+ytch_anomallies_df = pd.read_csv('output\\2022-5-19_20-6-56_Can_Opener_Vol_36_GGST\\Anomalous_rounds_Can_Opener_Vol_36_GGST_2022-5-19_20-6-56.csv')
+#ytch_anomallies_df = pd.DataFrame({})
 #ytch_vid_data_df = pd.read_csv('output\\2022-4-11_8-25-4_Series_E_Sports_Arena_Wee\\Visual_detection_data_Series_E_Sports_Arena_Wee_2022-4-11_8-25-4.csv')
 #file_path = "D:\\Libraries\\Documents\\Data_Science\\Projects\\FGC_Stream_Reader\\Test_Videos\\yt_dl\\Series E Sports Arena Week 11.mp4"
-output_folder = "D:\\Libraries\\Documents\\Data_Science\\Projects\\FGC_Stream_Reader\\output\\2022-4-15_4-57-19_My_Baiken_Matches_90_mins\\"
+output_folder = "D:\\Libraries\\Documents\\Data_Science\\Projects\\FGC_Stream_Reader\\output\\2022-5-19_20-6-56_Can_Opener_Vol_36_GGST\\"
 
-chapter_file = ctrl.create_round_based_yt_chapters(ytch_rounds_df, output_folder, 
+chapter_file = ctrl.out.create_round_based_yt_chapters(ytch_rounds_df, output_folder, 
                                                    vid_label="Baiken matches", 
                                                    prepend_id=True)
 print("{}".format(chapter_file))
-chapter_file = ctrl.create_game_based_yt_chapters(ytch_games_df, output_folder, 
+chapter_file = ctrl.out.create_game_based_yt_chapters(ytch_games_df, output_folder, 
                                                   vid_label="Baiken Matches", 
                                                   prepend_id=True)
 print("{}".format(chapter_file))

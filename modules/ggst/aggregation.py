@@ -3,7 +3,8 @@
 Created on Tue Jan 25 19:32:52 2022
 
 Guilty Gear Strive data Aggregator module. Functions related to aggregating & 
-writing aggregation results to a variety of output formats.
+validating aggregation results to ensure game data/outcomes are as accurate as 
+possible based on the extracted data.
 
 @author: PDP2600
 """
@@ -11,7 +12,13 @@ import pandas as pd
 from collections import Counter
 
 def get_char_portrait_col_names(df_columns:list)->list:
-    #Retrieves all the P1 & P2 character portrait match column names
+    """Retrieves all the P1 & P2 character portrait match column names from a
+    list of column names.
+    -------------------------------------------------------------------------
+    -=df_columns=- List of all the column names from the DataFrawm w/ the raw 
+      extracted match data.
+    -------------------------------------------------------------------------
+    [-return-] A list w/ the names of all the P1/P2 character portrait columns."""
     char_portrait_col_names:list = []
     for col_name in df_columns:
         if "P_Portrait" in col_name:
@@ -19,9 +26,13 @@ def get_char_portrait_col_names(df_columns:list)->list:
             
     return char_portrait_col_names
 
-#Defining the columns required for aggregation & creating a new DF w/ those 
-#columns to be used in aggregation functions
 def reduce_match_df_to_agg_df(vid_match_data_df):
+    """Creates a new DataFrame from the raw data extraction DataFrame, with 
+    only the columns required for aggregation.
+    -------------------------------------------------------------------------
+    -=vid_match_data_df=- DataFrame w/ raw extracted match data.
+    -------------------------------------------------------------------------
+    [-return-] A DataFrame which only has the columns required for aggregation."""
     agg_col_names:list = ['Time_in_Secs', 'Frame_Number_secs']
     char_portraits:list = get_char_portrait_col_names(list(vid_match_data_df))
     other_cols:list = ['Starter_Duel', 'Starter_Number_1', 'Starter_Number_2', 
@@ -36,6 +47,18 @@ def reduce_match_df_to_agg_df(vid_match_data_df):
     return vid_match_data_df[agg_col_names]
 
 def _find_duel_start_blocks(duel_df, duel_block_threshold:int)->list:
+    """Creates a list of dicts which contain the start & end frames/indexs of 
+    all the "Duel" starters detected. Depending on processing FPS, the same
+    starter/ender can be detected in multiple frames (sometimes not 
+    consequectively), this function combines them as a "block".
+    -------------------------------------------------------------------------
+    -=duel_df=- DataFrame w/ match data, filtered to only be valid "Duel" 
+      detections.
+    -=duel_block_threshold=- Config value denoting the distance in frames where
+      non-consequective detected "Duels" can be considered in the same "block"
+    -------------------------------------------------------------------------
+    [-return-] List of dicts w/ the start & end indexes of every valid "Duel" 
+     detected."""
     duel_index_blocks:list = []
     prev_index:int = -1
     start_index:int = 0
@@ -66,6 +89,15 @@ def _find_duel_start_blocks(duel_df, duel_block_threshold:int)->list:
     return duel_index_blocks
 
 def _evaluate_round_data(round_bool_data_df)->str:
+    """Evaluates round match scores submitted fora single "Duel" block to 
+    determine if a specific round number can be determined w/ confidence.
+    -------------------------------------------------------------------------
+    -=round_bool_data_df=- DataFrame. which has rows from a single "Duel" block 
+     & only contains boolean value columns for each of the 4 possible round 
+     values, which are determined in function _round_number_detect.
+    -------------------------------------------------------------------------
+    [-return-] A str which is either 'Unknown' if round data is inconclusive, 
+     or is one of the values: 'Round_1', 'Round_2', 'Round_3', 'Round_Final'."""
     round_sum = {'Round_1': sum(round_bool_data_df.Round_1), 
                  'Round_2': sum(round_bool_data_df.Round_2), 
                  'Round_3': sum(round_bool_data_df.Round_3), 
@@ -91,6 +123,17 @@ def _evaluate_round_data(round_bool_data_df)->str:
             return "Unknown"
 
 def _round_number_detect(duel_df, min_delta:float)->str:
+    """Evaluates round match scores submitted for a single "Duel" block to 
+    determine if a specific round number can be determined w/ confidence.
+    -------------------------------------------------------------------------
+    -=duel_df=- DataFrame. which has rows from a single "Duel" block 
+      & has the raw extracted match score data for those frames.
+    -=min_delta=- Config value, which is the minimum score difference between 
+      multiple Duel "number" scores in the same frame, to consider one of the 
+      round number values what is the best guess of the actual round number.
+    -------------------------------------------------------------------------
+    [-return-] A str which is either 'Unknown' if round data is inconclusive, 
+     or is one of the values: 'Round_1', 'Round_2', 'Round_3', 'Round_Final'."""
     duel_number_cols_df = duel_df.copy()
     duel_number_cols_df = duel_number_cols_df[['Starter_Number_1', 
                                                'Starter_Number_2', 
@@ -102,13 +145,13 @@ def _round_number_detect(duel_df, min_delta:float)->str:
     duel_number_cols_df['Round_Final'] = False
     
     for index, row in duel_number_cols_df.iterrows():
-        #Changed requirement for other Round numbers to be zero b/c of false positives
+        #Non-Duel 1 round numbers need to be 0 to avoid false positives
         if row.Starter_Number_1 > 0:
             if ((row.Starter_Number_2 == 0) and 
                 (row.Starter_Number_3 == 0) and 
                 (row.Starter_Number_Final == 0)):
                 duel_number_cols_df.loc[index, 'Round_1'] = True
-        #Removed check against Round_1 b/c of false positives
+
         if row.Starter_Number_2 > 0:
             if ((row.Starter_Number_2 - row.Starter_Number_3) > min_delta and 
                 (row.Starter_Number_2 - row.Starter_Number_Final) > min_delta):
@@ -129,6 +172,18 @@ def _round_number_detect(duel_df, min_delta:float)->str:
 
 def _get_paired_lets_rock_block(lets_rock_df, duel_end:int, 
                                 duel_to_lets_rock_buffer:int)->int:
+    """Finds if there's a "Lets Rock" template detected which is associated w/ 
+    a "Duel" block, returning the end index of the "Lets Rock" block.
+    -------------------------------------------------------------------------
+    -=lets_rock_df=- DataFrame. which all rows w/ non-zero "Lets Rock" match 
+      scores & has the raw extracted match score data for those frames.
+    -=duel_end=- End index of a "Duel" block.
+    -=duel_to_lets_rock_buffer=- Config value, denoting how many frames from 
+      the end of a "Duel" block a detected "Lets Rock" can be considered a part 
+      of the same round "Starter" block.
+    -------------------------------------------------------------------------
+    [-return-] Either -1 if there was no "Lets Rock" within the buffer, or the 
+     end index frame of the "Lets Rock" block that's paired w/ the "Duel" block."""
     start:int = duel_end + 1
     end:int = start + duel_to_lets_rock_buffer
     lets_rock_within_buffer_df = lets_rock_df.loc[start: end, ]
@@ -136,9 +191,19 @@ def _get_paired_lets_rock_block(lets_rock_df, duel_end:int,
         return -1
     else:
         return list(lets_rock_within_buffer_df.index)[-1]
-#Finds the round start blocks by index & seconds, as well as round number if
-#it's available
+
 def _round_start_processing(data_for_agg_df, agg_config:dict):
+    """Determines all the instances of round start indicators, combining where
+    applicable, denoting where the start blocks start/end, & the detected round
+    number when possible.
+    -------------------------------------------------------------------------
+    -=data_for_agg_df=- DataFrame w/ raw match data & only columns used for 
+      aggregation.
+    -=agg_config=- Config values for aggregation processing in a dict
+    -------------------------------------------------------------------------
+    [-return-] DataFrame where each row is a round start block, with the 
+     columns/data: start_index:int, end_index:int, start_secs:int, end_secs:int, 
+     round:str, & Lets_Rock:bool (whether Lets Rock was detected in the block)."""
     duel_detected_df = data_for_agg_df.loc[(data_for_agg_df['Starter_Duel'] > 0.45) & 
                      (data_for_agg_df['Ender_Double_KO'] == 0) & 
                      (data_for_agg_df['Ender_Draw'] == 0) & 
@@ -175,11 +240,21 @@ def _round_start_processing(data_for_agg_df, agg_config:dict):
                       'end_secs': data_for_agg_df.loc[end, 'Time_in_Secs'],
                       'round': round_num, 'Lets_Rock': bool(includes_lets_rock)
                       }
-        round_start_df = round_start_df.append(pd.DataFrame(round_dict, index = [start]), 
+        round_start_df = round_start_df.append(pd.DataFrame(round_dict, 
+                                                            index=[start]), 
                                                sort=False)
     return round_start_df
 
 def _find_orphan_lets_rocks(data_for_agg_df, round_start_df):
+    """Finds if there are any detected Lets Rocks rows which weren't associated 
+    w/ a "Duel" (previous processing starts w/ detected "Duel" blocks).
+    -------------------------------------------------------------------------
+    -=data_for_agg_df=- DataFrame w/ raw match data & only columns used for 
+      aggregation.
+    -=round_start_df=- DataFrame w/ the processed round start block data.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame w/ all rows which had "Lets Rock" detected, but were 
+     not included in the previously processed round start blocks."""
     lets_rock_detected_df = data_for_agg_df.loc[data_for_agg_df.Starter_Lets_Rock > 0]
     orphaned_lets_rocks_df = pd.DataFrame({})
     
@@ -194,9 +269,16 @@ def _find_orphan_lets_rocks(data_for_agg_df, round_start_df):
     
     return orphaned_lets_rocks_df
 
-#Takes a DataFrame of "Lets Rock" rows, & consolidates adjacent rows into a round start
-# block
 def _find_lets_rock_solo_blocks(lets_rock_df):
+    """With a DataFrame of orphaned "Lets Rock"s, consolidates adjacent rows 
+    detecting the same "Lets Rock" into round start blocks.
+    -------------------------------------------------------------------------
+    -=lets_rock_df=- DataFrame which contains raw match data for all the "Lets 
+      Rock"s detected w/o associated "Duels" (orphaned "Lets Rock"s)
+    -------------------------------------------------------------------------
+    [-return-] DataFrame where the orphaned "Lets Rock"s are transformed into 
+     round start blocks: start_index:int, end_index:int, start_secs:int, 
+     start_secs:int, & round:str (all round values "Unknown")."""
     rock_index_blocks:list = []
     prev_index:int = -1
     start_index:int = 0
@@ -237,34 +319,62 @@ def _find_lets_rock_solo_blocks(lets_rock_df):
     return rock_index_blocks_df
 
 def _lets_rock_dict_to_df(lets_rock_block:list):
+    """Turns a list of round start block dicts, into DataFrames w/ the 
+    start_index of each dict set as the df row index.
+    -------------------------------------------------------------------------
+    -=lets_rock_block=- List of dicts w/ "Lets Rock" round start block data.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame out of the round start dicts w/ start_index being used 
+     as each df row's index: start_index:int, end_index:int, start_secs:int, 
+     start_secs:int, & round:str (all round values "Unknown")."""
     round_start_df = pd.DataFrame({})
     for block in lets_rock_block:
         start_index = block['start_index']
-        round_start_df = round_start_df.append(pd.DataFrame(block, index = [start_index]), 
+        round_start_df = round_start_df.append(pd.DataFrame(block, 
+                                                            index=[start_index]), 
                                                sort=False)
     return round_start_df
 
 def load_match_csv_into_dataframe(csv_path:str):
+    """Loads csvs created from a previous extraction/aggregation process into 
+    a DataFrame.
+    -------------------------------------------------------------------------
+    -=csv_path=- Filepath of FGW csv to load into DataFrame.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame w/ csv's data loaded & index reset."""
     vid_data_df = pd.read_csv(csv_path)
     vid_data_df = vid_data_df.reset_index()
     vid_data_df = vid_data_df.drop(['Unnamed: 0'], axis='columns')
     vid_data_df = vid_data_df.drop(['index'], axis='columns')
     return vid_data_df
 
-#When a Lets Rock isn't found to be associated with a Duel, assumes the Duel
-#is missing, & the Lets Rock is the start of the round. Weirdness can happen
-#if there are valid Duel/Lets Rock pairs, but the Lets Rock is outside the threshold
 def _consolidate_orphans_into_round_start_blocks(orphaned_df, round_start_df):
+    """Combines the round start blocks found based on "Duel"s & the orphaned 
+    "Lets Rock" round start blocks.
+    -------------------------------------------------------------------------
+    -=orphaned_df=- DataFrame w/ orphaned "Lets Rock" round start blocks.
+    -=round_start_df=- DataFrame w/ the processed "Duel" round start block data.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame w/ all round start blocks merged & sorted by index."""
     if len(orphaned_df) > 0:
         lets_rock_rounds = _find_lets_rock_solo_blocks(orphaned_df)
         round_start_df = round_start_df.append(lets_rock_rounds)
         round_start_df = round_start_df.sort_index(axis = 0)
     return round_start_df    
 
-#When passed a df with a single ender type will return a list of dicts containing
-#the start/end indexes of each ender block, w/ ender data all assigned false 
-#(correct boolean values determined in the function which calls it)
 def _get_single_ender_blocks(single_ender_df, end_block_threshold:int)->list:
+    """Transforms instances of specific enders into round end blocks. Combines 
+    multiple rows/frames detecting the same ender for a single round.
+    -------------------------------------------------------------------------
+    -=single_ender_df=- DataFrame which contains raw match data filtered to 
+      rows/frames where a specific ender (Slash, Perfect, Double KO, Times Up) 
+      has been detected.
+    -=end_block_threshold=- Config value, max difference in index/frame for 
+      adjacent rows/frames to be considered the same ender for the same round.
+    -------------------------------------------------------------------------
+    [-return-] List of dicts, transforming data into round end blocks: 
+     start_index:int, end_index:int, perfect: False, double_ko: False, 
+     time_out: False, & draw: False."""
     ender_index_blocks:list = []
     prev_index:int = -1
     start_index:int = 0
@@ -294,9 +404,19 @@ def _get_single_ender_blocks(single_ender_df, end_block_threshold:int)->list:
                 prev_index = index
     return ender_index_blocks
 
-#Creates a list of dicts containing start/end indexes of each ender block & 
-#sets values related to type (time out being a draw detected in calling function)
-def _find_duel_end_blocks(ender_df, end_block_threshold:int)->list:
+def _find_round_end_blocks(ender_df, end_block_threshold:int)->list:
+    """With a DataFrame of the raw extract data filtered by enders detected, 
+    transforms it into a list of round end blocks for each round's ender.
+    -------------------------------------------------------------------------
+    -=ender_df=- DataFrame which contains raw match data filtered to 
+      rows/frames where an ender (Slash, Perfect, Double KO, Times Up) has a 
+      valid match score.
+    -=end_block_threshold=- Config value, max difference in index/frame for 
+      adjacent rows/frames to be considered the same ender for the same round.
+    -------------------------------------------------------------------------
+    [-return-] List of dicts, transforming data into round end blocks: 
+     start_index:int, end_index:int, perfect:bool, double_ko:bool, 
+     time_out:bool, & draw:bool."""
     slash_ender_df = ender_df.loc[ender_df['Ender_Slash'] > 0]
     perfect_ender_df = ender_df.loc[ender_df['Ender_Perfect'] > 0]
     double_ko_ender_df = ender_df.loc[ender_df['Ender_Double_KO'] > 0]
@@ -304,18 +424,21 @@ def _find_duel_end_blocks(ender_df, end_block_threshold:int)->list:
     all_ender_blocks:list = []
     
     if len(list(slash_ender_df.index)) > 0:
-        slash_blocks = _get_single_ender_blocks(slash_ender_df, end_block_threshold)
+        slash_blocks = _get_single_ender_blocks(slash_ender_df, 
+                                                end_block_threshold)
         all_ender_blocks = all_ender_blocks + slash_blocks
     
     if len(list(perfect_ender_df.index)) > 0:
-        perfect_blocks = _get_single_ender_blocks(perfect_ender_df, end_block_threshold)
+        perfect_blocks = _get_single_ender_blocks(perfect_ender_df, 
+                                                  end_block_threshold)
         for i, ender in enumerate(perfect_blocks):
             perfect_blocks[i]['perfect'] = True
             
         all_ender_blocks = all_ender_blocks + perfect_blocks
     
     if len(list(double_ko_ender_df.index)) > 0:
-        double_ko_blocks = _get_single_ender_blocks(double_ko_ender_df, end_block_threshold)
+        double_ko_blocks = _get_single_ender_blocks(double_ko_ender_df, 
+                                                    end_block_threshold)
         for i, ender in enumerate(double_ko_blocks):
             double_ko_blocks[i]['double_ko'] = True
             double_ko_blocks[i]['draw'] = True
@@ -323,17 +446,26 @@ def _find_duel_end_blocks(ender_df, end_block_threshold:int)->list:
         all_ender_blocks = all_ender_blocks + double_ko_blocks
         
     if len(list(times_up_ender_df.index)) > 0:
-        times_up_blocks = _get_single_ender_blocks(times_up_ender_df, end_block_threshold)
+        times_up_blocks = _get_single_ender_blocks(times_up_ender_df, 
+                                                   end_block_threshold)
         for i, ender in enumerate(times_up_blocks):
             times_up_blocks[i]['time_out'] = True
             
         all_ender_blocks = all_ender_blocks + times_up_blocks        
     return all_ender_blocks
 
-#Seeing if there are any Draw enders linked to a time out ended round, returns
-#end index of the draw block or -1 if none are linked
 def _get_time_out_draw_block(draw_df, time_out_end:int, 
                              time_out_to_draw_buffer:int)->int:
+    """Checks for linked "Draw" ender template match, after instance of "Time 
+    Out" ender has been detected.
+    -------------------------------------------------------------------------
+    -=draw_df=- DataFrame which contains raw match data filtered to 
+      rows/frames which "Draw" has a valid match score.
+    -=time_out_end=- Index where a "Time Out" block ends
+    -=time_out_to_draw_buffer=- Config value, the number of rows/frames to 
+      check after a "Time Out" block ends for an associated "Draw" ender.
+    -------------------------------------------------------------------------
+    [-return-] End index of the "Draw" block if it exists, or -1 when no "Draw"."""
     start:int = time_out_end + 1
     end:int = start + time_out_to_draw_buffer
     draw_within_buffer_df = draw_df.loc[start: end, ]
@@ -342,16 +474,29 @@ def _get_time_out_draw_block(draw_df, time_out_end:int,
     else:
         return list(draw_within_buffer_df.index)[-1]
 
-#Finds the round ender blocks by index & seconds, as well as different round end
-#properties based on the ender
 def _round_end_processing(data_for_agg_df, agg_config:dict):
-    ender_detected_df = data_for_agg_df.loc[(data_for_agg_df['Ender_Slash'] > 0.49) | 
-                                            (data_for_agg_df['Ender_Double_KO'] > 0.49) | 
-                                            (data_for_agg_df['Ender_Perfect'] > 0.49) | 
-                                            (data_for_agg_df['Ender_Times_Up'] > 0.49)]
+    """Runs functions to process raw data & aggregate it into round end data. 
+    Creates round ender blocks w/ the intervals of frames each round end takes 
+    up & captures any special outcomes the round may have ended in.
+    -------------------------------------------------------------------------
+    -=data_for_agg_df=- DataFrame w/ raw match data & only columns used for 
+      aggregation.
+    -=agg_config=- Config values for aggregation processing in a dict
+    -------------------------------------------------------------------------
+    [-return-] DataFrame where each row is a round end block, w/ the 
+     columns/data: start_index:int, end_index:int, start_secs:int, end_secs:int, 
+     perfect:bool, double_ko:bool, time_out:bool, & draw:bool."""
+    ender_detected_df = data_for_agg_df.loc[(data_for_agg_df['Ender_Slash'] 
+                                             > 0.49) | 
+                                            (data_for_agg_df['Ender_Double_KO'] 
+                                             > 0.49) | 
+                                            (data_for_agg_df['Ender_Perfect'] 
+                                             > 0.49) | 
+                                            (data_for_agg_df['Ender_Times_Up'] 
+                                             > 0.49)]
     draw_detected_df = data_for_agg_df.loc[data_for_agg_df.Ender_Draw > 0]
     round_end_df = pd.DataFrame({})
-    ender_index_blocks:list = _find_duel_end_blocks(ender_detected_df, 
+    ender_index_blocks:list = _find_round_end_blocks(ender_detected_df, 
                                                     agg_config['ender_block_index_threshold'])
     for end_block in ender_index_blocks:
         start:int = end_block['start_index']
@@ -380,6 +525,15 @@ def _round_end_processing(data_for_agg_df, agg_config:dict):
     return round_end_df
 
 def _merge_round_start_and_end_blocks(round_start_df, round_end_df):
+    """Combines the round start & end blocks into a DataFrame, sorted by index. 
+    When there are no false positives detected & no missed starter/enders in 
+    the video, it's expected starter & ender rows will alternate.'
+    -------------------------------------------------------------------------
+    -=round_start_df=- DataFrame w/ the processed round start block data.
+    -=round_end_df=- DataFrame w/ the processed round end block data.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame w/ all round start & end blocks merged & sorted by 
+     index."""
     start_df = round_start_df.copy()
     end_df = round_end_df.copy()
     
@@ -400,6 +554,18 @@ def _merge_round_start_and_end_blocks(round_start_df, round_end_df):
     
 def _create_inconclusive_dict(cur_row_df, adj_row_df, agg_config:dict, 
                               note:str)->dict:
+    """Creates a round dictionary when there's either a missing round start or
+    end block. This can be caused by false positves & missed detection.
+    -------------------------------------------------------------------------
+    -=cur_row_df=- DataFrame w/ the current round block being checked.
+    -=adj_row_df=- DataFrame w/ the next or previous round block w/ respect to 
+      cur_row_df. Only used for round start/end estimation for missing element.
+    -=agg_config=- Config values for aggregation processing in a dict
+    -=note=- String w/ a specific message about how the row is inconclusive.
+    -------------------------------------------------------------------------
+    [-return-] Round dict w/ estimated start/end depending what's missing. 
+    Contains dynamic time/index start/end data, & all the data from the round 
+    blocks, but winner/character data will have filler 'Unknown' values."""
     starter_index:int = agg_config['missing_starter_index_value']
     ender_index:int = agg_config['missing_ender_index_value']
     starter_time:int = agg_config['missing_starter_secs_value']
@@ -446,6 +612,14 @@ def _create_inconclusive_dict(cur_row_df, adj_row_df, agg_config:dict,
     return inconclusive_round
 
 def _create_invalid_dict(cur_row_df, note:str)->dict:
+    """Creates a round dictionary for invalid rounds at the beginning or end of 
+    the video.
+    -------------------------------------------------------------------------
+    -=cur_row_df=- DataFrame w/ the current round block being checked.
+    -=note=- String w/ a specific message about how the row is invalid.
+    -------------------------------------------------------------------------
+    [-return-] Round dict which has start or end values being -1 depending on 
+     why it's invalid. Winner/character data will have filler 'Unknown' values."""
     invalid:dict = {}
     if cur_row_df.loc[0,'block_type'] == 'Starter':
         invalid = {'start_secs': cur_row_df.loc[0,'start_secs'], 
@@ -477,6 +651,15 @@ def _create_invalid_dict(cur_row_df, note:str)->dict:
     return invalid
 
 def _create_valid_round_dict(cur_row_df, next_row_df)->dict:
+    """Creates a round dictionary where cur_row_df is a round start block & 
+    next_row_df is a round end block, combining their data into a single round.
+    -------------------------------------------------------------------------
+    -=cur_row_df=- DataFrame w/ the current round block being checked.
+    -=next_row_df=- DataFrame w/ the next round block w/ respect to cur_row_df.
+    -------------------------------------------------------------------------
+    [-return-] Round dict which contains dynamic time/index start/end data, & 
+    all the data from the round blocks, but winner/character data will have 
+    filler 'Unknown' values."""
     cur_row = cur_row_df.copy().reset_index()
     next_row = next_row_df.copy().reset_index()
     round_dict = {'start_secs': cur_row.loc[0,'start_secs'], 
@@ -499,6 +682,18 @@ def _create_valid_round_dict(cur_row_df, next_row_df)->dict:
 
 def _resolve_missing_pair(cur_row_df, next_row_df, prev_row_df, 
                           agg_config:dict)->dict:
+    """Called for round blocks which either are not Starters and/or the next 
+    round block is not an Ender, which indicates a false positive or missing 
+    Starter/Ender detection.
+    -------------------------------------------------------------------------
+    -=cur_row_df=- DataFrame w/ the current round block being checked.
+    -=next_row_df=- DataFrame w/ the next round block w/ respect to cur_row_df.
+    -=prev_row_df=- DataFrame w/ the previous round block w/ respect to 
+      cur_row_df.
+    -=agg_config=- Config values for aggregation processing in a dict.
+    -------------------------------------------------------------------------
+    [-return-] Round dict created by _create_invalid_dict or 
+     _create_inconclusive_dict, depend on the issue w/ the round blocks."""
     cur_row = cur_row_df.copy().reset_index()
     next_row = next_row_df.copy().reset_index()
     prev_row = prev_row_df.copy().reset_index()
@@ -546,9 +741,16 @@ def _resolve_missing_pair(cur_row_df, next_row_df, prev_row_df,
             return _create_inconclusive_dict(cur_row, prev_row, agg_config, 
                                              inconl_note)
 
-#Transforms round starter & ender data into round data, attempts to resolve
-#rounds with missing starter or ender where possible & flags those instances
 def _consolidate_round_data(rounds_df, agg_config:dict):
+    """Transforms Round Start & End data into Round data, & attempts to resolve 
+    rounds with missing starter or ender where possible & flags those instances.
+    -------------------------------------------------------------------------
+    -=rounds_df=- DataFrame w/ the merged round start/end block data.
+    -=agg_config=- Config values for aggregation processing in a dict.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame of Round data created from combining start/end blocks. 
+     They contain all data start/end round blocks did, plus winner/character 
+     fields which have filler 'Unknown' values."""
     index_vector = list(rounds_df.index)
     last_index:int = index_vector[-1]
     i:int = 0
@@ -563,10 +765,11 @@ def _consolidate_round_data(rounds_df, agg_config:dict):
             if ((rounds_df.loc[index,'block_type'] == 'Starter') and 
                 (rounds_df.loc[next_index,'block_type'] == 'Ender')):
                 round_dict = _create_valid_round_dict(rounds_df.loc[index:index,], 
-                                                      rounds_df.loc[next_index:next_index,])
+                                                      rounds_df.loc[next_index:
+                                                                    next_index,])
                 round_data_df = round_data_df.append(pd.DataFrame(round_dict, 
-                                                                  index = [index]))
-                #Setting previous row index to the ender row & itterating to the row after
+                                                                  index=[index]))
+                #Setting previous row index to the ender row
                 prev_index = index_vector[i+1]
                 i = i + 2
             else:
@@ -578,7 +781,6 @@ def _consolidate_round_data(rounds_df, agg_config:dict):
                                                    prev_row_df, agg_config)
                 round_data_df = round_data_df.append(pd.DataFrame(round_dict, 
                                                                   index = [index]))
-                #April 3 Added prev_index assignment to this branch (I think I missed it)
                 prev_index = index_vector[i]
                 i = i + 1
         else:
@@ -591,38 +793,68 @@ def _consolidate_round_data(rounds_df, agg_config:dict):
             i = i + 1
     return round_data_df
 
-#Validate whether there are legit Duel scores equal or above the min_score 
 def _validate_duel_match_score(ggst_slice_df, min_score:float)->bool:
-    duel_min_data_df = ggst_slice_df.loc[((ggst_slice_df.Starter_Duel >= min_score) &
-                                          ((ggst_slice_df.Starter_Number_1 > 0) |
-                                           (ggst_slice_df.Starter_Number_2 > 0) |
-                                           (ggst_slice_df.Starter_Number_3 > 0) |
-                                           (ggst_slice_df.Starter_Number_Final > 0)))]
+    """Checks if any frames/rows in a defined round start block 1)Have a "Duel" 
+    match score higher or equal to min_score & 2)There are match values above 0 
+    for any of the possible Round number templates (1, 2, 3, Final).
+    -------------------------------------------------------------------------
+    -=ggst_slice_df=- DataFrame w/ raw video extract data sliced based on a 
+      single Round start block's start/end indexes.
+    -=min_score=- Minimum score for "Duel" template detection to be a valid 
+      "Duel" frame/row.
+    -------------------------------------------------------------------------
+    [-return-] Boolean value whether the round start data is considered high 
+     enough quality, to be trusted to not be a false positive."""
+    duel_min_data_df = ggst_slice_df.loc[((ggst_slice_df.Starter_Duel >= 
+                                           min_score) &
+                                          ((ggst_slice_df.Starter_Number_1 
+                                            > 0) |
+                                           (ggst_slice_df.Starter_Number_2 
+                                            > 0) |
+                                           (ggst_slice_df.Starter_Number_3 
+                                            > 0) |
+                                           (ggst_slice_df.Starter_Number_Final 
+                                            > 0)))]
     return len(duel_min_data_df) > 0
 
-#When there are duplicate rounds or likely Duel 1 false positives (when there's no
-#associated Let's Rock), filter them out
-def _filter_round_start_false_positives(round_start_blocks_df, ggst_vid_data_df):
+def _filter_round_start_false_positives(round_start_df, ggst_vid_data_df):
+    """Filters out round start blocks which seem like they might be false 
+    positives. Round start blocks w/ associated "Lets Rock" templates detected, 
+    and/or "Duel" template scores consider high enough are kept.
+    -------------------------------------------------------------------------
+    -=round_start_df=- DataFrame w/ the processed round start block data.
+    -=ggst_vid_data_df=- DataFrame w/ raw match data
+    -------------------------------------------------------------------------
+    [-return-] DataFrame of Round start blocks, w/ likely starter false 
+     positives filtered out."""
     start_blocks_df = pd.DataFrame({})
-    for index, row in round_start_blocks_df.iterrows():
+    for index, row in round_start_df.iterrows():
         ggst_slice_df = ggst_vid_data_df.loc[row.start_index:row.end_index,]
         has_high_duel_score:bool = _validate_duel_match_score(ggst_slice_df, 
                                                               0.85)
-        if bool(round_start_blocks_df.loc[index, 'Lets_Rock']):
-            round_df = pd.DataFrame({'start_index': round_start_blocks_df.loc[index, 'start_index'], 
-                                     'end_index': round_start_blocks_df.loc[index, 'end_index'], 
-                                     'start_secs': round_start_blocks_df.loc[index, 'start_secs'], 
-                                     'end_secs': round_start_blocks_df.loc[index, 'end_secs'], 
-                                     'round': round_start_blocks_df.loc[index, 'round']}, 
+        if bool(round_start_df.loc[index, 'Lets_Rock']):
+            round_df = pd.DataFrame({'start_index': round_start_df.loc[index, 
+                                                                       'start_index'], 
+                                     'end_index': round_start_df.loc[index, 
+                                                                     'end_index'], 
+                                     'start_secs': round_start_df.loc[index, 
+                                                                      'start_secs'], 
+                                     'end_secs': round_start_df.loc[index, 
+                                                                    'end_secs'], 
+                                     'round': round_start_df.loc[index, 'round']}, 
                                     index = [index])
             start_blocks_df = start_blocks_df.append(round_df)
-        elif ((not bool(round_start_blocks_df.loc[index, 'Lets_Rock'])) and 
+        elif ((not bool(round_start_df.loc[index, 'Lets_Rock'])) and 
               has_high_duel_score):
-            round_df = pd.DataFrame({'start_index': round_start_blocks_df.loc[index, 'start_index'], 
-                                     'end_index': round_start_blocks_df.loc[index, 'end_index'], 
-                                     'start_secs': round_start_blocks_df.loc[index, 'start_secs'], 
-                                     'end_secs': round_start_blocks_df.loc[index, 'end_secs'], 
-                                     'round': round_start_blocks_df.loc[index, 'round']}, 
+            round_df = pd.DataFrame({'start_index': round_start_df.loc[index, 
+                                                                       'start_index'], 
+                                     'end_index': round_start_df.loc[index, 
+                                                                     'end_index'], 
+                                     'start_secs': round_start_df.loc[index, 
+                                                                      'start_secs'], 
+                                     'end_secs': round_start_df.loc[index, 
+                                                                    'end_secs'], 
+                                     'round': round_start_df.loc[index, 'round']}, 
                                     index = [index])
             start_blocks_df = start_blocks_df.append(round_df)
         else:
@@ -630,12 +862,30 @@ def _filter_round_start_false_positives(round_start_blocks_df, ggst_vid_data_df)
     return start_blocks_df
     
 def _get_index_when_ui_disappears(ggst_round_df):
+    """Used to correct overlaps between different Round ends & starts, which 
+    can happen when there are missing starters. Given the frames in the round, 
+    it finds the first frame/instance the UI is off screen (based on Timer 
+    outline template match score).
+    -------------------------------------------------------------------------
+    -=ggst_round_df=- DataFrame w/ raw match data, for a single round.
+    -------------------------------------------------------------------------
+    [-return-] The index of the 1st frame without the UI present, to be used as 
+     the new round start for the overlapping round."""
     no_ui_frames_df = ggst_round_df.loc[ggst_round_df.Game_UI_Timer_Outline == 0]
     no_ui_frames_df = no_ui_frames_df.sort_index()
     first_no_timer_frame = list(no_ui_frames_df.index)[0]
     return first_no_timer_frame
         
 def _validate_unknown_round_duration(round_blocks_df, ggst_data_df):
+    """Checks rounds w/ inconclusive data (missing Starter or Ender), & if 
+    there's an overlap between that round & an adjacent one, round start or end 
+    will be adjusted so there's no more overlap.
+    -------------------------------------------------------------------------
+    -=round_blocks_df=- DataFrame w/ combined round block data.
+    -=ggst_data_df=- DataFrame w/ raw match data
+    -------------------------------------------------------------------------
+    [-return-] DataFrame of Round blocks, w/ the adjusted start or end times 
+     which now avoid overlapping w/ another Round block."""
     verified_rounds_df = round_blocks_df.copy()
     index_ls = list(verified_rounds_df.index)
     last_index:int = index_ls[-1]
@@ -646,44 +896,55 @@ def _validate_unknown_round_duration(round_blocks_df, ggst_data_df):
         if bool(verified_rounds_df.loc[index, 'inconclusive_data']):
             round_start_index = verified_rounds_df.loc[index, 'start_index']
             round_end_index = verified_rounds_df.loc[index, 'end_index']
-            next_index = index_ls[index_count + 1] if index != last_index else -1
+            next_index = (index_ls[index_count + 1] if index != last_index 
+                          else -1)
             if next_index != -1:
-                next_round_start_secs = verified_rounds_df.loc[next_index, 'start_secs']
-                next_round_start_index = verified_rounds_df.loc[next_index, 'start_index']
-            
+                next_round_start_secs = verified_rounds_df.loc[next_index, 
+                                                               'start_secs']
+                next_round_start_index = verified_rounds_df.loc[next_index, 
+                                                                'start_index']
             if ((prev_round_end_index > 0) and 
-                ('Missing Starter:' in verified_rounds_df.loc[index, 'inconclusive_note']) 
+                ('Missing Starter:' in verified_rounds_df.loc[index, 
+                                                              'inconclusive_note']) 
                 and (round_start_index <= prev_round_end_index)):
                 ggst_slice_df = ggst_data_df.loc[prev_round_end_index:round_end_index,]
                 round_transition_index = _get_index_when_ui_disappears(ggst_slice_df)
-                round_transition_secs = ggst_data_df.loc[round_transition_index, 'Time_in_Secs']
+                round_transition_secs = ggst_data_df.loc[round_transition_index, 
+                                                         'Time_in_Secs']
                 verified_rounds_df.loc[index, 'start_secs'] = round_transition_secs
                 verified_rounds_df.loc[index, 'start_index'] = round_transition_index
             elif ((index != last_index) and 
-                  ('Missing Ender:' in verified_rounds_df.loc[index, 'inconclusive_note']) 
+                  ('Missing Ender:' in verified_rounds_df.loc[index, 
+                                                              'inconclusive_note']) 
                   and (round_end_index >= next_round_start_index)):
-                verified_rounds_df.loc[index, 'end_secs'] = next_round_start_secs - 1
-                verified_rounds_df.loc[index, 'end_index'] = next_round_start_index - 1
-        
+                verified_rounds_df.loc[index, 'end_secs'] = (next_round_start_secs 
+                                                             - 1)
+                verified_rounds_df.loc[index, 'end_index'] = (next_round_start_index 
+                                                              - 1)
         index_count = index_count + 1
         prev_round_end_index = verified_rounds_df.loc[index, 'end_index']
         
     return verified_rounds_df
 
-#Aggregates visual data extracted into game rounds (with start/end positions, 
-#round number, & extra data the ender might convey)
 def aggregate_into_rounds(ggst_vid_data_df, agg_config:dict):
+    """Aggregates extracted raw video data into game rounds, & runs other 
+    validation functions to help make sure aggregation is accurate.
+    -------------------------------------------------------------------------
+    -=ggst_vid_data_df=- DataFrame w/ raw match data.
+    -=agg_config=- Config values for aggregation processing in a dict.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame of Round blocks. Data defines their start/end 
+     intervals, any round start or end data (round number, end state, etc), & 
+     winner/character fields with filler 'Unknown' values."""
     round_start_blocks_df = _round_start_processing(ggst_vid_data_df, agg_config)
     round_start_blocks_df = _filter_round_start_false_positives(round_start_blocks_df, 
                                                                 ggst_vid_data_df)
-    #Looking for "Lets Rock" states which weren't associated with a Duel State 
-    #& adds them as a round starter block
+    #Finds instances of "Lets Rock" which weren't coupled w/ "Duel" matches
     orphaned_lets_rocks_df = _find_orphan_lets_rocks(ggst_vid_data_df, 
                                                      round_start_blocks_df)
     round_start_df = _consolidate_orphans_into_round_start_blocks(orphaned_lets_rocks_df, 
                                                                   round_start_blocks_df)
-    #Figuring out where all the round ender indicators start and end, & if the 
-    #round ended in a Perfect/Double KO/Time Out
+
     round_end_blocks_df = _round_end_processing(ggst_vid_data_df, agg_config)
     round_end_blocks_df = round_end_blocks_df.sort_index(axis = 0)
 
@@ -696,16 +957,28 @@ def aggregate_into_rounds(ggst_vid_data_df, agg_config:dict):
     
     return consolidated_rounds_df
 
-#Used to swap to a new undisputed max character, used to save space in calling function
 def _reset_max_char_dict(col_name:str, val:float)->dict:
+    """Resets the character counter dict to a single key & value."""
     new_max:dict = {}
     new_max[col_name] = val
     
     return new_max
 
-#Checks which character had the most matches & that there are no ties/disputed matches
 def get_character_used(ggst_slice_data_df, character_cols:list, 
                        min_char_delta:float)->str:
+    """Checks the raw data frames/rows of a round, counting the number of times 
+    each character for a player is detected, then outputs the character name.
+    -------------------------------------------------------------------------
+    -=ggst_slice_data_df=- DataFrame w/ raw video extract data sliced based on a 
+      single Round block's start/end indexes.
+    -=character_cols=- List of the character portrait column names to check. 
+      Should be the columns for just one player (Player 1 or 2).
+    -=min_char_delta=- Config value. Minimum difference in match score to 
+      decide if there's an undisputed character in the case of multiple 
+      characters detected for the same frame.
+    -------------------------------------------------------------------------
+    [-return-] String of the character detected or 'Unknown' if there's not a 
+     good enough consensus of the character detected in the Round."""
     char_detected_sum:dict = {}
     for index, row in ggst_slice_data_df.iterrows():
         max_val_dict = {}        
@@ -728,8 +1001,7 @@ def get_character_used(ggst_slice_data_df, character_cols:list,
                             max_val_dict = _reset_max_char_dict(col, char_val)
                         else:
                             max_val_dict[col] = char_val        
-        #Only if there's a single undisputed max char value for the round, 
-        #will it be incremented, more than one, it doesn't count towards the sum
+        #When there's a single undisputed max char value for the round, 
         if len(max_val_dict) == 1:
             max_key = list(max_val_dict.keys())[0]
             if max_key in char_detected_sum:
@@ -739,8 +1011,15 @@ def get_character_used(ggst_slice_data_df, character_cols:list,
 
     return _verify_character_detected(char_detected_sum)
 
-#Verifies that there's a single undisputed character which was detected
 def _verify_character_detected(char_detected:dict)->str:
+    """Based on the dict w/ character detected counts, outputs the detected 
+    character name.
+    -------------------------------------------------------------------------
+    -=char_detected=- Contains the count of each character portrait key 
+      detected in the round. More often than not it will only have 1 key.
+    -------------------------------------------------------------------------
+    [-return-] String of the character detected or 'Unknown' if there's more 
+    than 1 max value key in the dict."""
     max_key:str = 'Unknown'
     if len(char_detected) > 0:
         max_key = max(char_detected, key=char_detected.get)
@@ -754,8 +1033,16 @@ def _verify_character_detected(char_detected:dict)->str:
     
     return max_key
 
-#Player 1 & 2 Character detect: aggregate character names for frames in each round
 def extract_played_characters(ggst_vid_data_df, rounds_df, agg_config:dict):
+    """Calls functions to aggregate the P1 & P2 characters for each round, & 
+    assigns those character values to a new DataFrame of Rounds.
+    -------------------------------------------------------------------------
+    -=ggst_vid_data_df=- DataFrame w/ extracted raw video data.
+    -=rounds_df=- DataFrame w/ processed round block data.
+    -=agg_config=- Config values for aggregation processing in a dict.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame w/ all the Rounds contained in rounds_df, but w/ P1 & 
+     P2 character values assigned based on character aggregation functions."""
     char_data_rounds_df = rounds_df.copy()
     char_portraits_agg:list = get_char_portrait_col_names(list(ggst_vid_data_df))
     player_1_characters:list = [x for x in char_portraits_agg 
@@ -779,10 +1066,19 @@ def extract_played_characters(ggst_vid_data_df, rounds_df, agg_config:dict):
             
     return char_data_rounds_df
 
-#return "winner" value & a value representing the confidence in that conclusion
-def _get_winner_by_health(ggst_vid_data_df, round_df, 
+def _get_winner_by_health(ggst_vid_data_df, round_input_df, 
                           agg_config:dict)->tuple[str,str]:
-    round_df = round_df.reset_index()
+    """Attempts to find the winner based on health, checking after ender 1st 
+    (players can press buttons to skip to next round after ender), & then 
+    before ender or another method if the round had no ender dectected.
+    -------------------------------------------------------------------------
+    -=ggst_vid_data_df=- DataFrame w/ extracted raw video data.
+    -=round_input_df=- DataFrame w/ a single round block.
+    -=agg_config=- Config values for aggregation processing in a dict.
+    -------------------------------------------------------------------------
+    [-return-] A tuple of strings, the winner ('Player 1', 'Player 2', 
+     'Unknown') & confidence (None, 'Very Low', 'Low', 'Medium', 'High')"""
+    round_df = round_input_df.copy().reset_index()
     start_index:int = round_df.loc[0, 'start_index']
     end_index:int = round_df.loc[0, 'end_index']
     last_index = list(ggst_vid_data_df.tail(1).index)[0]
@@ -817,10 +1113,21 @@ def _get_winner_by_health(ggst_vid_data_df, round_df,
                                                   (end_index - 1), ]
         return _no_ender_health_check(ggst_data_slice_df, health_min_delta_no_ender)
 
-#For the case when an ender exists, but no health data extracted post-ender
 def _no_health_post_ender_health_check(ggst_health_slice_df, 
                                        min_delta:float)->tuple[str,str]:
-    #dataframe slice index in reverse order as list
+    """When an ender for the round exists, but there isn't enough conclusive 
+    health data after the ender, health is checked pre-ender for each raw data 
+    frame from the ender for a frame/row w/ a decisive winner outcome.
+    -------------------------------------------------------------------------
+    -=ggst_health_slice_df=- DataFrame w/ extracted raw video data, rows 
+      encompass a buffer value of frames before the end of ender to the end of
+      the ender.
+    -=min_delta=- Config value. Minimum value between P1/P2 low health values 
+      to declare a winner in that case.
+    -------------------------------------------------------------------------
+    [-return-] A tuple of strings, the winner ('Player 1', 'Player 2', 
+     'Unknown') & confidence (None, 'Very Low', 'Low', 'Medium', 'High')"""
+    #Dataframe slice index in reverse order as list
     index_ls = list(ggst_health_slice_df.sort_index(ascending=False).index)
     index_size:int = len(index_ls)
     index:int = 0
@@ -829,13 +1136,23 @@ def _no_health_post_ender_health_check(ggst_health_slice_df,
     while (index < index_size) and (winner == 'Unknown'):
         df_index:int = index_ls[index]
         data_row_df = ggst_health_slice_df.loc[df_index:df_index,]
-        winner, confidence = _pre_ender_extra_health_check(data_row_df, min_delta)
+        winner, confidence = _pre_ender_extra_health_check(data_row_df, 
+                                                           min_delta)
         index = index + 1
     return winner, confidence
 
-#For the case when no ender exists for a round, returns winner by health if possible 
-#& confidence
 def _no_ender_health_check(ggst_health_slice_df, min_delta:float)->tuple[str,str]:
+    """When there's no ender for the round, does similiar checks to post & pre 
+    ender health winner processing, but w/ buffer values specific for no enders.
+    -------------------------------------------------------------------------
+    -=ggst_health_slice_df=- DataFrame w/ extracted raw video data, rows 
+      encompass a buffer value of frames before the round end estimate to the 
+      end of the round end estimate.
+    -=min_delta=- Config value. Minimum value between P1/P2 low health values 
+      to declare a winner in that case.
+    -------------------------------------------------------------------------
+    [-return-] A tuple of strings, the winner ('Player 1', 'Player 2', 
+     'Unknown') & confidence (None, 'Very Low', 'Low', 'Medium', 'High')"""
     #dataframe slice index in reverse order as list
     index_ls = list(ggst_health_slice_df.sort_index(ascending=False).index)
     index_size:int = len(index_ls)
@@ -845,16 +1162,25 @@ def _no_ender_health_check(ggst_health_slice_df, min_delta:float)->tuple[str,str
     while (index < index_size) and (winner == 'Unknown'):
         df_index:int = index_ls[index]
         data_row_df = ggst_health_slice_df.loc[df_index:df_index,]
-        winner, confidence = _parse_health_data_for_winner(data_row_df, min_delta)
+        winner, confidence = _parse_health_data_for_winner(data_row_df, 
+                                                           min_delta)
         if winner == 'Unknown':
             winner, confidence = _pre_ender_extra_health_check(data_row_df, 
                                                                min_delta)
         index = index + 1
     return winner, confidence
 
-#Used in the case of a round which had no ender or no health data post ender
-#There's a case where P1 & P2 health columns will both have non 0 values
 def _pre_ender_extra_health_check(ggst_slice_df, min_delta:float)->tuple[str,str]:
+    """Checking health health data pre-ender for each raw data frame from the 
+    ender for a frame/row w/ a decisive winner outcome.
+    -------------------------------------------------------------------------
+    -=ggst_slice_df=- DataFrame w/ a single row/frame of extracted raw video 
+      data.
+    -=min_delta=- Config value. Minimum value between P1/P2 low health values 
+      to declare a winner in that case.
+    -------------------------------------------------------------------------
+    [-return-] A tuple of strings, the winner ('Player 1', 'Player 2', 
+     'Unknown') & confidence (None, 'Very Low', 'Low', 'Medium', 'High')"""
     ggst_health_slice_df = ggst_slice_df.copy().reset_index()
     Player_1_high:int = ggst_health_slice_df.loc[0, '1P_High_Health']
     Player_1_low:int = ggst_health_slice_df.loc[0, '1P_Low_Health']
@@ -888,7 +1214,6 @@ def _pre_ender_extra_health_check(ggst_slice_df, min_delta:float)->tuple[str,str
         confidence = 'Very Low'
         if Player_1_low == Player_2_low:
             return 'Unknown', confidence
-        #added Mar 24th to prevent some health false positives
         elif abs(Player_1_low - Player_2_low) < min_delta:
             return 'Unknown', confidence
         elif Player_1_low > Player_2_low:
@@ -899,11 +1224,23 @@ def _pre_ender_extra_health_check(ggst_slice_df, min_delta:float)->tuple[str,str
         return 'Unknown', confidence
 
 def _parse_health_data_for_winner(ggst_slice_df, min_delta:float)->tuple[str,str]:
+    """Used to check health post-ender. Health value columns are summed for all 
+    the rows in ggst_slice_df to see if a conclusive winner can be deduced.
+    -------------------------------------------------------------------------
+    -=ggst_slice_df=- DataFrame w/ extracted raw video data, slice from 2 
+      frames before end of ender to a buffer value of frames after ender.
+    -=min_delta=- Config value specific to post ender case. Minimum value 
+      between P1/P2 low health values to declare a winner in that case.
+    -------------------------------------------------------------------------
+    [-return-] A tuple of strings, the winner ('Player 1', 'Player 2', 
+     'Unknown') & confidence (None, 'Very Low', 'Low', 'Medium', 'High')"""
     ggst_rows_w_ui_df = ggst_slice_df.loc[(ggst_slice_df.Game_UI_Timer_Outline 
                                            > 0)]
     confidence:str = None
-    ggst_rows_w_ui_df = ggst_rows_w_ui_df.loc[((ggst_rows_w_ui_df['1P_High_Health'] == 0) |
-                                               (ggst_rows_w_ui_df['2P_High_Health'] == 0))]
+    ggst_rows_w_ui_df = ggst_rows_w_ui_df.loc[((ggst_rows_w_ui_df['1P_High_Health']
+                                                == 0) |
+                                               (ggst_rows_w_ui_df['2P_High_Health']
+                                                == 0))]
     if len(ggst_rows_w_ui_df) == 0:
         return 'Unknown', confidence
     Player_1_high:int = ggst_rows_w_ui_df['1P_High_Health'].sum()
@@ -939,6 +1276,15 @@ def _parse_health_data_for_winner(ggst_slice_df, min_delta:float)->tuple[str,str
         return 'Unknown', confidence
 
 def _check_for_player_win_template(ggst_slice_df, min_delta:float)->str:
+    """Checking for Player Win template matches after round ender.
+    -------------------------------------------------------------------------
+    -=ggst_slice_df=- DataFrame w/ extracted raw video data, slice from end of 
+      ender to a config value buffer of frames for checking player win templates.
+    -=min_delta=- Config value. Minimum value between P1/P2 Win template match 
+      scores, to choose the one w/ the higher score as the winner via template. 
+    -------------------------------------------------------------------------
+    [-return-] A string, the winner via template ('Player 1', 'Player 2', 
+     'Unknown')."""
     ggst_player_win_df = ggst_slice_df.loc[(ggst_slice_df.Ender_1P_Win > 0) | 
                                            (ggst_slice_df.Ender_2P_Win > 0)]
     
@@ -956,8 +1302,18 @@ def _check_for_player_win_template(ggst_slice_df, min_delta:float)->str:
     else:
         return 'Unknown'
     
-def _get_winner_by_tmpl(ggst_vid_data_df, round_df, agg_config:dict)->str:
-    round_df = round_df.reset_index()
+def _get_winner_by_tmpl(ggst_vid_data_df, round_input_df, agg_config:dict)->str:
+    """Attempts to find the winner based on Player win template matches. These 
+    aren't present too often as players can skip round/game end screens before 
+    these appear (they take a few seconds to show after round/game win poses).
+    -------------------------------------------------------------------------
+    -=ggst_vid_data_df=- DataFrame w/ extracted raw video data.
+    -=round_input_df=- DataFrame w/ a single round block.
+    -=agg_config=- Config values for aggregation processing in a dict.
+    -------------------------------------------------------------------------
+    [-return-] A string, the winner via template ('Player 1', 'Player 2', 
+     'Unknown')."""
+    round_df = round_input_df.copy().reset_index()
     start_index:int = round_df.loc[0, 'start_index']
     end_index:int = round_df.loc[0, 'end_index']
     last_index = list(ggst_vid_data_df.tail(1).index)[0]
@@ -969,8 +1325,8 @@ def _get_winner_by_tmpl(ggst_vid_data_df, round_df, agg_config:dict)->str:
         end_slice_index:int = end_index + frame_buffer_legit_ender
         if end_slice_index > last_index:
             end_slice_index = last_index
-        ggst_data_slice_df = ggst_vid_data_df.loc[(end_index + 1):end_slice_index, ]
-        #Function returns Winner & confidence in that result based on data
+        ggst_data_slice_df = ggst_vid_data_df.loc[(end_index + 1):
+                                                  end_slice_index, ]
         return _check_for_player_win_template(ggst_data_slice_df, win_min_delta)
     else:
         slice_start_index:int = end_index - frame_buffer_missing_ender
@@ -982,6 +1338,15 @@ def _get_winner_by_tmpl(ggst_vid_data_df, round_df, agg_config:dict)->str:
 
 def _get_overall_confidence(winner_via_template:str, winner_via_health:str, 
                             health_confidence:str)->str:
+    """Upgrades confidence if there was a Winner via Template detected. The 
+    Player win template matches are very reliable in determining round winners.
+    -------------------------------------------------------------------------
+    -=winner_via_template=- Either 'Player 1', 'Player 2', or 'Unknown'.
+    -=winner_via_health=- Either 'Player 1', 'Player 2', or 'Unknown'.
+    -=health_confidence=- Either 'Very Low', 'Low', 'Medium', 'High', or None.
+    -------------------------------------------------------------------------
+    [-return-] Value which is 'High', 'Very High', or the passed in value in 
+     health_confidence."""
     if winner_via_template != 'Unknown':
         if winner_via_template == winner_via_health:
             if health_confidence == 'High':
@@ -992,18 +1357,33 @@ def _get_overall_confidence(winner_via_template:str, winner_via_health:str,
             return 'High'
     else:
         return health_confidence
-    
-#If the player win template value was found, that's the value defaulted to
-#Health can get weird for rounds where end was estimated (no ender found)
+
 def _consolidate_win_data(winner_via_template:str, winner_via_health:str)->str:
+    """If Template Winner was found, that's used as the overall winner, 
+    otherwise value of winner_via_health is the overall winner.
+    -------------------------------------------------------------------------
+    -=winner_via_template=- Either 'Player 1', 'Player 2', or 'Unknown'.
+    -=winner_via_health=- Either 'Player 1', 'Player 2', or 'Unknown'.
+    -------------------------------------------------------------------------
+    [-return-] Value which is either 'Player 1', 'Player 2', or 'Unknown'."""
     if (winner_via_template == 'Unknown') and (winner_via_health != 'Unknown'):
         return winner_via_health
     elif (winner_via_template != 'Unknown') and (winner_via_health == 'Unknown'):
         return winner_via_template
     else:
+        #Covers 2 cases: both winner types 'Unknown', or both are not 'Unknown'
         return winner_via_template
 
 def extract_round_winner(ggst_vid_data_df, rounds_input_df, agg_config:dict):
+    """Attempts to deduce the outcome of each aggregated round via the health 
+    data or matches on the Player win templates.
+    -------------------------------------------------------------------------
+    -=ggst_vid_data_df=- DataFrame w/ extracted raw video data.
+    -=rounds_input_df=- DataFrame w/ all round data blocks.
+    -=agg_config=- Config values for aggregation processing in a dict.
+    -------------------------------------------------------------------------
+    [-return-] A DataFrame w/ Round Blocks data passed in, updated for all 
+     detected winner data."""
     winner_by_health:str = 'Unknown'
     winner_by_tmpl:str = 'Unknown'
     confidence:str = None
@@ -1032,13 +1412,20 @@ def extract_round_winner(ggst_vid_data_df, rounds_input_df, agg_config:dict):
                                                              winner_by_health, 
                                                              confidence)
             rounds_df.loc[index, 'winner_confidence'] = overall_confidence
-            
         else:
             rounds_df.loc[index, 'winner'] = 'Draw'
             
     return rounds_df
 
 def classify_rounds_into_games(rounds_df):
+    """Classifies round blocks into game & anamalous rounds.
+    -------------------------------------------------------------------------
+    -=rounds_input_df=- DataFrame w/ all round data blocks.
+    -------------------------------------------------------------------------
+    [-return-] A tuple of 2 DataFrames: game_rounds_df which are rounds 
+     classified into games w/ a 'game_id' column for the game identifiers, & 
+     anomally_rounds_df which are rounds that couldn't be classified into games 
+     e/ an 'anomaly_id' column w/ unique anomaly identifiers."""
     game_rounds_df, anomally_rounds_df = _validate_rounds_for_games(rounds_df)
     
     if len(game_rounds_df) > 0:
@@ -1048,9 +1435,17 @@ def classify_rounds_into_games(rounds_df):
     
     return game_rounds_df, anomally_rounds_df
 
-#Assumes there are a minimum of 2 rounds for every game, attempts to organize rounds
-#into games
 def _validate_rounds_for_games(rounds_input_df):
+    """1st step for round classification, operates under the assumption a valid 
+    game will have at least 2 rounds. It's an initial check that consecutive 
+    round blocks have valid round values before proceeding to other checks.
+    -------------------------------------------------------------------------
+    -=rounds_input_df=- DataFrame w/ all round data blocks.
+    -------------------------------------------------------------------------
+    [-return-] A tuple of 2 DataFrames: game_rounds_df which are rounds 
+     classified into games w/ a 'game_id' column for the game identifiers, & 
+     anomally_rounds_df which are rounds that couldn't be classified into games 
+     e/ an 'anomaly_id' column w/ unique anomaly identifiers."""
     rounds_df = rounds_input_df.copy().reset_index()
     total_rows:int = len(rounds_df)
     index:int = 0
@@ -1079,21 +1474,32 @@ def _validate_rounds_for_games(rounds_input_df):
                 index = last_round_index + 1
                 game_count = game_count + 1
             else:
-                anomallies_df = _add_anomally_round_df(rounds_df.loc[index:index,], 
+                anomallies_df = _add_anomaly_round_df(rounds_df.loc[index:index,], 
                                                    anomallies_df, anomally_count)
                 anomally_count = anomally_count + 1
                 index = index + 1
         else:
-            anomallies_df = _add_anomally_round_df(rounds_df.loc[index:index,], 
+            anomallies_df = _add_anomaly_round_df(rounds_df.loc[index:index,], 
                                                    anomallies_df, anomally_count)
             anomally_count = anomally_count + 1
             index = index + 1
     return games_df, anomallies_df
 
-#Verifies round index is the 3rd/final round of a game by a player winning 2 rounds
-#Doesn't address the case where there's an Unknown winner in one of the rounds
 def _is_game_with_3_rounds(rounds_df, round_index:int, 
                            final_round_case:bool=False)->bool:
+    """Verifies round index is the 3rd/final round of a game, where a player 
+    wins 2 rounds. Doesn't address the case where there's an Unknown winner in 
+    one of a game's rounds.
+    -------------------------------------------------------------------------
+    -=rounds_df=- DataFrame w/ all round data blocks.
+    -=round_index=- Index value of what's being checked as the 3rd/4th round 
+      of a game being classified.'
+    -=final_round_case=- Whether conditions indicate a game might have 4 rounds. 
+      In the rare case that a "Final" round is a part of a 3 round game (where 
+      first 2 rounds are Draws), this value is passed in as False.
+    -------------------------------------------------------------------------
+    [-return-] A boolean denoting if an undisputed winner could be determined 
+     under the assumption the game is comprised of 3-4 rounds."""
     #The game will be at least 2 rounds which is insured before the function call
     last_round_index = round_index
     first_round = round_index - 2
@@ -1107,24 +1513,40 @@ def _is_game_with_3_rounds(rounds_df, round_index:int,
     else:
         return False
 
-#When the potential 3rd round is Unknown, this is a check if the time gap between
-#rounds isn't above the max gap (which makes it more likely it's in the same game)
 def _is_round_gap_same_game(rounds_df, round_2_index:int)->bool:
+    """When the potential 3rd round is Unknown, this is a check if the time gap 
+    between round 2 & 3 isn't above the max gap (hard coded to 25 secs atm), 
+    which makes it more likely it's a part of the same game.
+    -------------------------------------------------------------------------
+    -=rounds_df=- DataFrame w/ all round data blocks.
+    -=round_2_index=- Index value of what's being checked as the 2nd round of a 
+    game being classified.'
+    -------------------------------------------------------------------------
+    [-return-] Boolean value whether the gap between the end of round 2 & start 
+     of the potential round 3 is less than the hard coded max gap value."""
     max_gap_secs:int = 25
     round_unknown_gap:int = (rounds_df.loc[round_2_index + 1, 'start_secs'] - 
                              rounds_df.loc[round_2_index, 'end_secs'])
     return (round_unknown_gap < max_gap_secs)
 
 def _get_last_game_round_index(rounds_df, round_1_index:int)->int:
+    """Attempts to find the last round of a game, returning its index.
+    -------------------------------------------------------------------------
+    -=rounds_df=- DataFrame w/ all round data blocks.
+    -=round_1_index=- Index value of the 1st round of a game being classified.
+    -------------------------------------------------------------------------
+    [-return-] Index of the round block found to likely be the last round of 
+     the same game the passed in 1st round belongs to."""
     #The game will be at least 2 rounds which is insured before the function call
     last_round_index:int = round_1_index + 1
     total_rows:int = len(rounds_df)
     first_2_rounds_df = rounds_df.loc[round_1_index:last_round_index,]
     player_winner:str = _game_won_by(first_2_rounds_df, 2)
-
+    
+    #2 round game check, based on wins where confidence higher than 'Very Low'
     if (((player_winner == 'Player 1') or (player_winner == 'Player 2')) and 
-        (len(first_2_rounds_df.loc[first_2_rounds_df['winner_confidence'] != 'Very Low'])
-         == 2)):
+        (len(first_2_rounds_df.loc[first_2_rounds_df['winner_confidence'] 
+                                   != 'Very Low']) == 2)):
         return last_round_index
     
     if (total_rows > (last_round_index + 1)):
@@ -1135,7 +1557,7 @@ def _get_last_game_round_index(rounds_df, round_1_index:int)->int:
             return last_round_index
         elif rounds_df.loc[last_round_index + 1, 'round'] == 'Round_3':
             last_round_index = last_round_index + 1
-            #Check if there's a Final (4th) 
+            #Check if there's a Duel Final (4th round) 
             if (total_rows > (last_round_index + 1)):
                 if rounds_df.loc[last_round_index + 1, 'round'] == 'Round_1':
                     return last_round_index
@@ -1143,7 +1565,7 @@ def _get_last_game_round_index(rounds_df, round_1_index:int)->int:
                     last_round_index = last_round_index + 1
                     return last_round_index
                 else:
-                    #"Unknown" case, may need to add more conditions for this
+                    #'Unknown' round case, may need to add more conditions later
                     return last_round_index
             else:
                 return last_round_index
@@ -1173,12 +1595,20 @@ def _get_last_game_round_index(rounds_df, round_1_index:int)->int:
                 else:
                     return last_round_index
         else:
-            #"Unknown" case, may need to add more conditions for this
+            #'Unknown' round case, may need to add more conditions later
             return last_round_index
     else:
         return last_round_index
             
 def _game_won_by(rounds_df, rounds_to_win:int)->str:
+    """Based on rounds submitted, returns the player which won enough rounds to
+    be considered the winner of the game.
+    -------------------------------------------------------------------------
+    -=rounds_df=- DataFrame w/ round data blocks, predicted to be the same game.
+    -=rounds_to_win=- Number of rounds won to consider the game won by a player.
+    -------------------------------------------------------------------------
+    [-return-] The game winner 'Player 1'/'Player 2', or None if a game winner 
+     couldn't be determined based on the given data & game winner condition."""
     player_1_wins = len(rounds_df.loc[rounds_df.winner == 'Player 1'])
     player_2_wins = len(rounds_df.loc[rounds_df.winner == 'Player 2'])
     if player_1_wins == rounds_to_win:
@@ -1188,15 +1618,40 @@ def _game_won_by(rounds_df, rounds_to_win:int)->str:
     else:
         return None
 
-def _add_anomally_round_df(anomally_round_input_df, anomally_collection_df, 
-                           anomally_num:int):
-    anomally_round_df = anomally_round_input_df.copy()
-    index_ls = list(anomally_round_df.index)
+def _add_anomaly_round_df(anomaly_round_input_df, anomaly_collection_df, 
+                          anomaly_num:int):
+    """Adds an anomalous round w/ 'anomaly_id' to the anomaly_collection_df.
+    -------------------------------------------------------------------------
+    -=anomaly_round_input_df=- DataFrame w/ single round data block, which was 
+      determined to be anomalous.
+    -=anomaly_collection_df=- DataFrame, collecting all anomalous rounds w/ ids.
+    -=anomaly_num=- Used to generate the unique 'anomaly_id' identifier.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame anomaly_collection_df w/ the new anomalous round 
+     added to it."""
+    anomaly_round_df = anomaly_round_input_df.copy()
+    index_ls = list(anomaly_round_df.index)
     for index in index_ls:
-        anomally_round_df.loc[index, 'anomaly_id'] = "Anomally_{}".format(anomally_num)
-    return anomally_collection_df.append(anomally_round_df, sort=False)
+        if anomaly_num < 10:
+            anomaly_round_df.loc[index, 'anomaly_id'] = ("Anomaly_0{}"
+                                                         .format(anomaly_num))
+        else:
+            anomaly_round_df.loc[index, 'anomaly_id'] = ("Anomaly_{}"
+                                                         .format(anomaly_num))
+    return anomaly_collection_df.append(anomaly_round_df, sort=False)
 
 def _add_game_rounds_df(game_rounds_input_df, games_collection_df, game_num:int):
+    """Adds rounds classified as a part of the same game, to the 
+    games_collection_df, w/ a new 'game_id' identifier.
+    -------------------------------------------------------------------------
+    -=game_rounds_input_df=- DataFrame w/ round data blocks, for rounds 
+      determined to be a part of the same game.
+    -=games_collection_df=- DataFrame, collecting all rounds which have been 
+      classified into games, w/ ids.
+    -=game_num=- Used to generate the unique 'game_id' identifier for rounds.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame games_collection_df w/ the rounds belonging to a new 
+     game added to it."""
     game_rounds_df = game_rounds_input_df.copy()
     index_ls = list(game_rounds_df.index)
     for index in index_ls:
@@ -1206,8 +1661,21 @@ def _add_game_rounds_df(game_rounds_input_df, games_collection_df, game_num:int)
             game_rounds_df.loc[index, 'game_id'] = "Game_{}".format(game_num)
     return games_collection_df.append(game_rounds_df, sort=False)
 
-#From Round data classified as games, aggregates winner & character data to game level
 def aggregate_into_games(game_rounds_df, anomalous_rounds_df):
+    """For rounds classified as games, aggregates start/end, winner & character 
+    data to the game level. Also ouputs anomalous rounds & inconclusive data 
+    flags to the console during runtime.
+    -------------------------------------------------------------------------
+    -=game_rounds_df=- DataFrame w/ rounds classified as games.
+    -=anomalous_rounds_df=- DataFrame w/ rounds classified as anomalous.
+    -------------------------------------------------------------------------
+    [-return-] DataFrame w/ rounds classified as games data aggregated to the 
+     game level. Has the following columns: 
+       'game_id':str, 'start_secs':int, 'end_secs':int, 'start_index':int, 
+       'end_index':int,  'total_rounds':int, 'character_1P':str, 
+       'character_2P':str, 'winner':str, 'player_1_rounds_won':int, 
+       'player_2_rounds_won':int, 'inconclusive_data':bool, & 
+       'inconclusive_note':str"""
     games_ls = list(set(game_rounds_df.game_id))
     game_index:int = 0
     game_level_df = pd.DataFrame({})
@@ -1229,12 +1697,21 @@ def aggregate_into_games(game_rounds_df, anomalous_rounds_df):
 
     return game_level_df.sort_values('game_id')
 
-#If possible aggregates what the game winner & round score is based on round results
 def _aggregate_game_result(single_game_rounds_df)->dict:
+    """When possible, aggregates the game winner & round score base don round 
+    results.
+    -------------------------------------------------------------------------
+    -=single_game_rounds_df=- DataFrame w/ rounds classified as games, for a 
+      single game.
+    -------------------------------------------------------------------------
+    [-return-] Dict w/ the game level aggregated data related to the outcome of
+     the game. Has the following keys: 
+        'player_1_rounds_won':int, 'player_2_rounds_won':int, 
+        'winner':str (value is: 'Player 1', 'Player 2', 'Draw', or 'Unknown'), 
+        'inconclusive_data':bool, & 'inconclusive_note':str"""
     rounds_df = single_game_rounds_df.reset_index()
     total_rounds = len(rounds_df)
     #If any rounds are Very Low confidence, default to last round winner
-    #After 1st version should add more edge cases about very low confidence rounds
     if ((len(rounds_df.loc[rounds_df.winner == 'Draw']) == 0) and 
         (len(rounds_df.loc[rounds_df.winner == 'Unknown']) == 0) and
         (len(rounds_df.loc[rounds_df.winner_confidence == 'Very Low']) == 0)):
@@ -1256,9 +1733,17 @@ def _aggregate_game_result(single_game_rounds_df)->dict:
     else:
         return _game_results_with_draw_or_unknown_winners(rounds_df)
 
-#Finds rounds scores & game winner based on only having last round results
-#Works since in most cases the winner of the last round is the game winner
 def _game_result_based_on_last_round_winner(single_game_rounds_df)->dict:
+    """Finds a game's outcome & P1/P2 round scores based on last round's result. 
+    -------------------------------------------------------------------------
+    -=single_game_rounds_df=- DataFrame w/ rounds classified as games, for a 
+      single game.
+    -------------------------------------------------------------------------
+    [-return-] Dict w/ the game level aggregated data related to the outcome of
+     the game. Has the following keys: 
+        'player_1_rounds_won':int, 'player_2_rounds_won':int, 
+        'winner':str (value is: 'Player 1', 'Player 2', 'Draw', or 'Unknown'), 
+        'inconclusive_data':bool, & 'inconclusive_note':str"""
     rounds_df = single_game_rounds_df.reset_index()
     total_rounds = len(rounds_df)
     last_round_index:int = total_rounds - 1
@@ -1277,9 +1762,17 @@ def _game_result_based_on_last_round_winner(single_game_rounds_df)->dict:
             'winner': winner, 'inconclusive_data': True, 
             'inconclusive_note': "Unknown or very low confidence winner of a round, winner based on last round result"}
 
-#When rounds have too many unknowns or are draws, this function itterates through
-#every round & attempts to figure out the winner or if it's a draw if possible
 def _game_results_with_draw_or_unknown_winners(rounds_df)->dict:
+    """For games w/ too many rounds with Unknown or draw outcomes, this 
+    function itterates through the rounds attmepting to figure out the outcome. 
+    -------------------------------------------------------------------------
+    -=rounds_df=- DataFrame w/ rounds classified as games, for a single game.
+    -------------------------------------------------------------------------
+    [-return-] Dict w/ the game level aggregated data related to the outcome of
+     the game. Has the following keys: 
+        'player_1_rounds_won':int, 'player_2_rounds_won':int, 
+        'winner':str (value is: 'Player 1', 'Player 2', 'Draw', or 'Unknown'), 
+        'inconclusive_data':bool, & 'inconclusive_note':str"""
     inconclusive:bool = False
     inconclusive_note:str = ""
     player_1_wins:int = 0
@@ -1319,9 +1812,17 @@ def _game_results_with_draw_or_unknown_winners(rounds_df)->dict:
             'inconclusive_data': inconclusive, 
             'inconclusive_note': inconclusive_note}
 
-#Attempts to aggregrate the character data in rounds to the game level, basically
-#checking for inconsistencies like multiple P1 or P2 characters in the game's rounds
 def _aggregate_game_characters(single_game_rounds_df)->dict:
+    """Aggregates round character data to the game level, checking for 
+    inconsistencies (multiple P1 or P2 characters detected in different rounds).
+    -------------------------------------------------------------------------
+    -=single_game_rounds_df=- DataFrame w/ rounds classified as games, for a 
+      single game.
+    -------------------------------------------------------------------------
+    [-return-] Dict w/ the game level aggregated data related to the outcome of
+     the game. Has the following keys: 
+        'character_1P':str, 'character_1P':str, 'inconclusive_data':bool, & 
+        'inconclusive_note':str"""
     p1_char_count:dict = {}
     p2_char_count:dict = {}
     for index, row in single_game_rounds_df.iterrows():
@@ -1361,8 +1862,14 @@ def _aggregate_game_characters(single_game_rounds_df)->dict:
             'inconclusive_data': is_inconclusive, 
             'inconclusive_note': inconclusive_note}
 
-#Checks for inconsistent characters in all the rounds
 def _check_character_results(char_count:dict)->dict:
+    """Checks for inconsistent characters in all the rounds of a game.
+    -------------------------------------------------------------------------
+    -=char_count=- Dict w/ a tally of all the characters for a single player 
+    in all the game's rounds. In practice it's usually a single character.
+    -------------------------------------------------------------------------
+    [-return-] Dict which has the following keys: 
+        'character':str, 'inconclusive_data':bool, & 'inconclusive_note':str"""
     char_result_keys = list(char_count.keys())
     if len(char_result_keys) == 1:
         if char_result_keys[0] != 'Unknown':
@@ -1389,11 +1896,24 @@ def _check_character_results(char_count:dict)->dict:
                     'inconclusive_data': True, 
                     'inconclusive_note': "Unknown or multiple characters in some rounds"}
 
-#Creates the dictionary which is the game level data structure. Also will combine
-#game level inconsistency notes & make a note of round level inconsistencies when
-#there were no game level inconsistency flags 
 def _create_game_data_dict(single_game_rounds_df, game_result:dict, 
                            game_chars:dict)->dict:
+    """Creates the dictionary which is the game level data structure. Also will 
+    combine game level inconsistency notes & make a note of round level 
+    inconsistencies when there were no game level inconsistency flags.
+    -------------------------------------------------------------------------
+    -=single_game_rounds_df=- DataFrame w/ rounds classified as games, for a 
+      single game.
+    -=game_result=- Output from game level result aggregagtion.
+    -=game_chars=- Output from game level character aggregation.
+    -------------------------------------------------------------------------
+    [-return-] Dict w/ game level aggregation of game rounds' results & 
+     characters. Has the following keys: 
+       'game_id':str, 'start_secs':int, 'end_secs':int, 'start_index':int, 
+       'end_index':int,  'total_rounds':int, 'character_1P':str, 
+       'character_2P':str, 'winner':str, 'player_1_rounds_won':int, 
+       'player_2_rounds_won':int, 'inconclusive_data':bool, & 
+       'inconclusive_note':str"""
     games_df = single_game_rounds_df.copy().reset_index()
     last_index:int = len(games_df) - 1
     is_inconclusive:bool = (game_result['inconclusive_data'] or 
@@ -1427,8 +1947,11 @@ def _create_game_data_dict(single_game_rounds_df, game_result:dict,
             'inconclusive_data': is_inconclusive, 
             'inconclusive_note': inconclusive_note}
 
-#Prints the anomalous round data in a readable format to the console
 def _print_anomalous_round_data(anomalous_rounds_df):
+    """Outputs to runtime console each row in anomalous_rounds_df, in a 
+    readable format.
+    -------------------------------------------------------------------------
+    -=anomalous_rounds_df=- DataFrame w/ rounds classified as anomalous."""
     if len(anomalous_rounds_df) > 0:
         
         for index, row in anomalous_rounds_df.iterrows():
@@ -1443,8 +1966,11 @@ def _print_anomalous_round_data(anomalous_rounds_df):
     else:
         print("--No anomalous rounds--")
 
-#Prints the inconsistent games data in a readable format to the console
 def _print_inconclusive_game_data(games_df):
+    """Outputs to runtime console each row in games_df, w/ an inconclusive note 
+    in a readable format.
+    -------------------------------------------------------------------------
+    -=games_df=- DataFrame w/ fully aggregated game data."""
     if ((len(games_df) > 0) and 
         (len(games_df.loc[games_df.inconclusive_data == True,]) > 0)):        
         for index, row in games_df.iterrows():
@@ -1464,6 +1990,20 @@ def _print_inconclusive_game_data(games_df):
 def convert_agg_config_vals_based_on_fps(agg_config:dict, vals_to_multiply:list, 
                                          vals_to_add_1:list, 
                                          capture_fps:int)->dict:
+    """Scales the config values for aggregation based on the frames per second 
+    the video is being processed at. Original config values are based on the 
+    default processing FPS which is 4.
+    -------------------------------------------------------------------------
+    -=agg_config=- Config values based on the default FPS. Stored in config 
+      file.
+    -=vals_to_multiply=- Config values, which are the keys in agg_config which 
+      should have scaling applied. Stored in config file.
+    -=vals_to_add_1=- Config values, which are the keys in agg_config which 
+      should have the value of 1 added after scaling. Stored in config file.
+    -=capture_fps=- Frames per second the video will be processed.
+    -------------------------------------------------------------------------
+    [-return-] Values of agg_config w/ scaling/transformation applied, to be 
+     used for video processing at the given FPS."""
     agg_config_new_vals:dict = agg_config.copy()
     #config values based on 4FPS, calculating the scale based on the FPS processed
     default_fps = 4
