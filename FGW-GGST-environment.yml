@@ -19,8 +19,8 @@ dependencies:
   - black=21.9b0
   - bleach=4.1.0
   - brotlipy=0.7.0
-  - ca-certificates=2020.10.14
-  - certifi=2021.10.8
+  - ca-certificates=2022.5.18.1
+  - certifi=2022.5.18.1
   - cffi=1.14.6
   - chardet=4.0.0
   - click=8.0.1
@@ -40,6 +40,7 @@ dependencies:
   - freetype=2.10.4
   - future=0.18.2
   - git=2.23.0
+  - git-lfs=3.2.0
   - helpdev=0.7.1
   - icu=68.1
   - idna=2.10
@@ -92,7 +93,7 @@ dependencies:
   - numpy=1.21.2
   - numpydoc=1.1.0
   - opencv=4.5.3
-  - openssl=1.1.1n
+  - openssl=1.1.1o
   - packaging=21.0
   - pandas=1.3.3
   - pandoc=2.14.2
@@ -187,4 +188,3 @@ dependencies:
   - zipp=3.5.0
   - zlib=1.2.11
   - zstd=1.5.0
-

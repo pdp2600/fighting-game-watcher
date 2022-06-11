@@ -10,12 +10,14 @@ minimums, image key to min match value mappings, aggregation config values)
 ###Aggregation Config Values
 
 ###Template Matching Config Values
-#From the FGWatcher folder as the working directory, this is the location of the template images
+#From the FGWatcher folder as the working directory, this is the location of the 
+#template images
 template_img_folder = "template_imgs\\"
 
-#Character related template images, their paths, & minimum match values. For a new character:
-#create a new dict of the same structure, rename the var name & 'Name' key to their name, &
-#add dict to lists: templ_img_dicts_ls & char_templ_img_dicts_ls
+#Character related template images, their paths, & minimum match values. For a new 
+#character:
+#create a new dict of the same structure, rename the var name & 'Name' key to their 
+#name, & add dict to lists: templ_img_dicts_ls & char_templ_img_dicts_ls
 anji_templ_imgs = {'Name': 'Anji_Mito', 
                    'Min_Portrait_Match': 0.2, 
                    'Min_Win_Pose_Match': 0.3, 
@@ -385,8 +387,6 @@ game_ui_templ_imgs = {'Name': 'Game_UI',
                                   #'2P_Round_Lost': template_img_folder + 
                                   #    'Round_Score\\P2_round_Lost.png', 
 								  'Timer_Outline': template_img_folder + 'Timer\\Timer_Template.png', 
-								  #'Timer_Outline_2': template_img_folder + 'Timer\\Timer_Template_2.png', 
-								  #'Timer_Outline_3': template_img_folder + 'Timer\\Timer_Template_3_Circle.png'
                                   }, 
                       'img_objs': {}
                      }
@@ -418,8 +418,8 @@ templ_img_min_val_mappings = {'1P_Portrait': 'Min_Portrait_Match',
                               '2P_Round_Lost': 'Min_Round_Score', 
 							  'Timer_Outline': 'Min_Timer_Score'
                               }
-#Used in brute_force_extract_and_aggregate_video, all the template dicts to match/check every 
-#frame in a single template match pass
+#Used in brute_force_extract_and_aggregate_video, all the template dicts to match/check 
+#every frame in a single template match pass
 templ_img_dicts_ls = [anji_templ_imgs, axl_templ_imgs, baiken_templ_imgs, 
 					  chipp_templ_imgs, faust_templ_imgs, giovanna_templ_imgs, 
                       goldlewis_templ_imgs, happy_templ_imgs, ino_templ_imgs, 
@@ -429,7 +429,8 @@ templ_img_dicts_ls = [anji_templ_imgs, axl_templ_imgs, baiken_templ_imgs,
 					  zato_templ_imgs, round_starter_templ_imgs, round_ender_templ_imgs, 
 					  game_ui_templ_imgs
                       ]
-#Used in layered_extract_and_aggregate_video, for the starter/ender 1st phase template match
+#Used in layered_extract_and_aggregate_video, for the starter/ender 1st phase template 
+#match
 #Will be used solely in a future function to just extract game/round time data
 starter_ender_img_dicts_ls = [round_starter_templ_imgs, round_ender_templ_imgs, 
 							  game_ui_templ_imgs
@@ -443,26 +444,16 @@ char_templ_img_dicts_ls = [anji_templ_imgs, axl_templ_imgs, baiken_templ_imgs,
 						   ramlethal_templ_imgs, sol_templ_imgs, testament_templ_imgs, 
 						   zato_templ_imgs
 						   ]
-#Was used in layered_extract_and_aggregate_video combined w/ the character ls, but got moved to
-#the starter/ender 1st phase template match
+#Was used in layered_extract_and_aggregate_video combined w/ the character ls, but got 
+#moved to the starter/ender 1st phase template match
 timer_templ_img_dict_ls = [game_ui_templ_imgs]
-"""
-templ_img_dicts_ls = [anji_templ_imgs, axl_templ_imgs, baiken_templ_imgs, 
-					  chipp_templ_imgs, faust_templ_imgs, giovanna_templ_imgs, 
-                      goldlewis_templ_imgs, happy_templ_imgs, ino_templ_imgs, 
-					  jacko_templ_imgs, ky_templ_imgs, leo_templ_imgs, may_templ_imgs, 
-					  millia_templ_imgs, nago_templ_imgs, potemkin_templ_imgs, 
-					  ramlethal_templ_imgs, sol_templ_imgs, zato_templ_imgs, 
-					  round_starter_templ_imgs, round_ender_templ_imgs, 
-					  game_ui_templ_imgs
-                      ]
-"""
+
 #################################################################
 #Aggregation configuration values
 agg_config_4fps = { 'duel_block_index_threshold': 16, 
                     'duel_to_lets_rock_frame_buffer': 8, 
                     'ender_block_index_threshold': 16, 
-                    'times_up_to_draw_frame_buffer': 24, 
+                    'times_up_to_draw_frame_buffer': 28, 
                     'health_after_ender_frame_buffer': 4, 
                     'missing_ender_health_buffer': 24, 
                     'player_win_after_ender_buffer': 64,
@@ -495,6 +486,5 @@ fps_scaling_vals_ls = ['duel_block_index_threshold',
                        'missing_ender_index_value', 
 					   'char_prediction_frame_buffer','player_health_min_delta', 
                        'no_health_after_ender_buffer']
-#Name of keys for values which should have + 1 added to them (for the FPS scaling, initial values 
-#are multiples of 2
+#Name of keys for values which should have + 1 added to them (for the FPS scaling, #initial values are multiples of 2
 plus_one_vals_ls = ['duel_to_lets_rock_frame_buffer']
