@@ -18,7 +18,9 @@
 [![LinkedIn][linkedin-shield]][linkedin-url]
 [![Twitter][twitter-shield]][twitter-url]
 [![Twitter Follow][twitter-follow-shield]][twitter-follow-url]
+<!-- 
 [![Current Version][version-shield]][git-url]
+-->
 
 <!-- PROJECT LOGO -->
 <br />
