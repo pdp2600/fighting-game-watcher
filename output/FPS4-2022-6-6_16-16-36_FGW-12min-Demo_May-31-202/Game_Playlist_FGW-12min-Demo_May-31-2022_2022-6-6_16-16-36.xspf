@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playlist xmlns="http://xspf.org/ns/0/" xmlns:vlc="http://www.videolan.org/vlc/playlist/ns/0/" version="1">
+	<title>Game based Playlist FGW-12min-Demo_May-31-2022</title>
+	<trackList>
+		<track>
+			<location>file:///D%3A%5CLibraries%5CDocuments%5CData_Science%5CProjects%5CFGC_Stream_Reader%5Cdemo_video%5CFGW-12min-Demo_May-31-2022.mp4</location>
+			<duration>715000</duration>
+			<extension application="http://www.videolan.org/vlc/playlist/0">
+				<vlc:id>0</vlc:id>
+				<vlc:option>bookmarks={name=Game_01 Total Rounds - 2 Baiken vs Baiken #0,time=5},{name=Game_02 Total Rounds - 3 Jack-O vs Zato #1,time=91},{name=Game_03 Total Rounds - 4 Happy_Chaos vs Faust #2,time=273},{name=Game_04 Total Rounds - 2 Testament vs Zato #3,time=463},{name=Game_05 Total Rounds - 2 Baiken vs Millia #4,time=600}</vlc:option>
+			</extension>
+		</track>
+	</trackList>
+	<extension application="http://www.videolan.org/vlc/playlist/0">
+		<vlc:item tid="0"/>
+	</extension>
+</playlist>

@@ -24,7 +24,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/pdp2600/fighting-game-watcher" target="_blank">
-    <img src="readme_imgs/FGW_Logo_2.png" alt="Logo" width="80" height="80">
+    <img src="readme_imgs/FGW_Logo_2.png" alt="Logo" width="100" height="100">
   </a>
 
   <h3 align="center">Fighting Game Watcher «» Guilty Gear Strive</h3>

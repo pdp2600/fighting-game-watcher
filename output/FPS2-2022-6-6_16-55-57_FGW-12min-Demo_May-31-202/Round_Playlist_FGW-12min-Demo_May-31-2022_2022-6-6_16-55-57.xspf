@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<playlist xmlns="http://xspf.org/ns/0/" xmlns:vlc="http://www.videolan.org/vlc/playlist/ns/0/" version="1">
+	<title>Round based Playlist FGW-12min-Demo_May-31-2022</title>
+	<trackList>
+		<track>
+			<location>file:///D%3A%5CLibraries%5CDocuments%5CData_Science%5CProjects%5CFGC_Stream_Reader%5Cdemo_video%5CFGW-12min-Demo_May-31-2022.mp4</location>
+			<duration>715000</duration>
+			<extension application="http://www.videolan.org/vlc/playlist/0">
+				<vlc:id>0</vlc:id>
+				<vlc:option>bookmarks={name=Game_01 Round - 1 Baiken vs Baiken #0,time=5},{name=Game_01 Round - 2 Baiken vs Baiken #1,time=49},{name=Game_02 Round - 1 Jack-O vs Zato #2,time=92},{name=Game_02 Round - 2 Jack-O vs Zato #3,time=139},{name=Game_02 Round - 3 Jack-O vs Zato #4,time=198},{name=Game_03 Round - 1 Happy_Chaos vs Faust #5,time=273},{name=Game_03 Round - 2 Happy_Chaos vs Faust #6,time=315},{name=Game_03 Round - 3 Happy_Chaos vs Faust #7,time=358},{name=Game_03 Round - Final Happy_Chaos vs Faust #8,time=402},{name=Game_04 Round - 1 Testament vs Zato #9,time=464},{name=Game_04 Round - 2 Testament vs Zato #10,time=534},{name=Game_05 Round - 1 Baiken vs Millia #11,time=601},{name=Game_05 Round - 2 Baiken vs Millia #12,time=666}</vlc:option>
+			</extension>
+		</track>
+	</trackList>
+	<extension application="http://www.videolan.org/vlc/playlist/0">
+		<vlc:item tid="0"/>
+	</extension>
+</playlist>

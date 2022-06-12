@@ -1,0 +1,14 @@
+start_secs,start_index,end_secs,end_index,round,winner,winner_via_health,winner_via_tmplate_match,winner_confidence,character_1P,character_2P,perfect,double_ko,time_out,draw,inconclusive_data,inconclusive_note,game_id
+5,22,46,187,Round_1,Player 1,Player 1,Unknown,High,Baiken,Baiken,False,False,False,False,False,,Game_01
+49,198,71,285,Round_2,Player 1,Player 1,Player 1,Very High,Baiken,Baiken,True,False,False,False,False,,Game_01
+91,367,135,543,Round_1,Player 1,Player 1,Unknown,High,Jack-O,Zato,False,False,False,False,False,,Game_02
+139,558,192,771,Round_2,Player 2,Player 2,Unknown,Medium,Jack-O,Zato,False,False,False,False,False,,Game_02
+198,792,245,981,Round_3,Player 1,Player 1,Player 1,High,Jack-O,Zato,False,False,False,False,False,,Game_02
+273,1094,310,1243,Round_1,Player 1,Player 1,Unknown,High,Happy_Chaos,Faust,False,False,False,False,False,,Game_03
+315,1260,349,1397,Round_2,Player 2,Player 2,Player 2,High,Happy_Chaos,Faust,False,False,True,False,False,,Game_03
+357,1431,398,1595,Round_3,Draw,Unknown,Unknown,,Happy_Chaos,Faust,False,False,True,True,False,,Game_03
+402,1608,439,1759,Round_Final,Draw,Unknown,Unknown,,Happy_Chaos,Faust,False,False,True,True,False,,Game_03
+463,1855,530,2121,Round_1,Draw,Unknown,Unknown,,Testament,Zato,False,True,False,True,False,,Game_04
+533,2135,588,2353,Round_2,Player 2,Player 2,Player 2,High,Testament,Zato,False,False,False,False,False,,Game_04
+600,2401,663,2655,Round_1,Player 1,Player 1,Unknown,Medium,Baiken,Millia,False,False,False,False,False,,Game_05
+666,2665,700,2800,Round_2,Player 1,Player 1,Player 1,Very High,Baiken,Millia,False,False,False,False,False,,Game_05

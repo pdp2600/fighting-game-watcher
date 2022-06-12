@@ -1,0 +1,6 @@
+game_id,start_secs,end_secs,start_index,end_index,total_rounds,character_1P,character_2P,winner,player_1_rounds_won,player_2_rounds_won,inconclusive_data,inconclusive_note
+Game_01,5,71,11,142,2,Baiken,Baiken,Player 1,2,0,False,
+Game_02,92,245,184,490,3,Jack-O,Zato,Player 1,2,1,False,
+Game_03,273,439,547,879,4,Happy_Chaos,Faust,Draw,1,1,False,
+Game_04,464,588,928,1176,2,Testament,Zato,Player 2,0,2,True,"Unknown or very low confidence winner of a round, winner based on last round result"
+Game_05,601,700,1202,1400,2,Baiken,Millia,Player 1,2,0,False,
