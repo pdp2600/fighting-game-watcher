@@ -362,9 +362,9 @@ If you have your Python environments all setup (required packages installed & Gi
     (Optional)If you want the included demo video file (i.e. you don't have any of your own):
 	<ol>
 		<li>Accessing Github repositories in the methods instructed below requires a Github account, if needed sign up for one <a href="https://github.com/join" target="_blank">here</a>.</li>
-		<li>With an Anaconda prompt window open, current directory being the project file directory, and the project's environment activated, setup the environment's local git with your Github username and email associated with the acocunt: <pre>git config --global user.email "my_email523@emaildomain.ca"</pre><pre>git config --global user.name "GitHubUserName"</pre> You'll also be prompted for the password the first time in a session a command is used which requires authentication.</li>
+		<li>With an Anaconda prompt window open, while in the current directory you'd like the `fighting-game-watcher` folder to be created in, and the project's environment activated, setup the environment's local git with your Github username and email associated with the account: <pre>git config --global user.email "my_email523@emaildomain.ca"</pre><pre>git config --global user.name "GitHubUserName"</pre> You'll also be prompted for the password the first time in a session a command is used which requires authentication.</li>
 		<li>To be able to access larger files in a Git repository, Git LFS needs to be enabled. Miniconda automated environment creation will have already installed the library, to enable it run: <pre>git lfs install</pre></li>
-		<li>To copy all the files (including the large video demo file) from Github and create a new git repository locally (I believe it will overwrite the files manually downloaded) run: <pre>git clone https://github.com/pdp2600/fighting-game-watcher.git</pre></li>
+		<li>To copy all the files (including the large video demo file) from Github and create a new git repository locally run: <pre>git clone https://github.com/pdp2600/fighting-game-watcher.git</pre></li>
 	</ol>
   </li>
 </ol>
