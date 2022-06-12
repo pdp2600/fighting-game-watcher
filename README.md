@@ -110,7 +110,7 @@ With this first version, I see it as the foundational tech for automated gatheri
 
 	
 ### Output Files Generated
-There are sample output files generated from processing the video in <a href="https://github.com/pdp2600/fighting-game-watcher/tree/master/output/FPS2-2022-6-6_16-55-57_FGW-12min-Demo_May-31-202" target="_blank">2 Frames per Second</a> and <a href="https://github.com/pdp2600/fighting-game-watcher/tree/master/output/FPS4-2022-6-6_16-16-36_FGW-12min-Demo_May-31-202" target="_blank">4 Frames per Second</a> if you'd like practical examples of the  descriptions below.
+There are sample output files generated from processing the 12 minute demo video in <a href="https://github.com/pdp2600/fighting-game-watcher/tree/master/output/FPS2-2022-6-6_16-55-57_FGW-12min-Demo_May-31-202" target="_blank">2 Frames per Second</a> and <a href="https://github.com/pdp2600/fighting-game-watcher/tree/master/output/FPS4-2022-6-6_16-16-36_FGW-12min-Demo_May-31-202" target="_blank">4 Frames per Second</a> if you'd like practical examples of the  descriptions below.
 
 - **Game level Playlist** - An XML Shareable Playlist for the video, with custom VLC bookmarks to jump/seek to the start of every aggregated game and anomolous round (if any exist). Descriptions of bookmarks will use game_id/anomaly_id & characters used (if they've been detected) by default.
 - **Round level Playlist** - An XML Shareable Playlist for the video, with custom VLC bookmarks to jump/seek to the start of every game round and anomolous round (if any exist). Descriptions of bookmarks will use game_id/anomaly_id, round number, & characters used (if they've been detected) by default.
