@@ -144,6 +144,7 @@ With this first version, I see it as the foundational tech for automated gatheri
 	</ul>
   </ol>
 </details>
+
 - **Round Data** - CSV file which is the result of aggregating the raw data into Rounds. Accurate aggregation of rounds requires being able to detect a round's starter images and ender. Contains the following columns:
 <details>
   <summary><i>Round Data Columns</i></summary>
@@ -170,6 +171,7 @@ With this first version, I see it as the foundational tech for automated gatheri
    	</ul>
   </ol>
 </details>
+
 - **Game Data** - CSV file which is the result of aggregating the round data into Games. Game aggregation accuracy, is mainly dependant on Round number values, currently the aggregation method can withstand Unknown round numbers, as long as there isn't more than 1 consequective Unknown round. Contains the following columns:
 <details>
   <summary><i>Game Data Columns</i></summary>
@@ -191,6 +193,7 @@ With this first version, I see it as the foundational tech for automated gatheri
    	</ul>
   </ol>
 </details>
+
 - **Anomalous Round Data** - CSV file which contains the rounds which were not aggregated into games. Contains the following columns:
 <details>
   <summary><i>Anomalous Round Data Columns</i></summary>
@@ -217,6 +220,7 @@ With this first version, I see it as the foundational tech for automated gatheri
    	</ul>
   </ol>
 </details>
+
 - **JSON Round & Game Data** - JSON formatted file, which is the aggregated game data, with its rounds' data nested under each game. Below is the JSON's structure, check Round & Game data column definitions above for more details about the fields:
 <details>
   <summary><i>JSON Keys & Structure</i></summary>
