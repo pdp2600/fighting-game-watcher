@@ -454,8 +454,8 @@ Game result/data accuracy, usually is very good, but on the Round level things c
 ## Roadmap
 
 ### Short Term
-- [ ] Add Template Images & COnfiguration for new Season 2 Characters
-	- [ ] Character 1
+- [ ] Add Template Images & Configuration for new Season 2 Characters
+	- [X] Bridget
 	- [ ] Character 2
 	- [ ] Character 3
 	- [ ] Character 4
@@ -470,6 +470,7 @@ Game result/data accuracy, usually is very good, but on the Round level things c
 - [ ] Prototyping Extracting More Round/Game data
 	- [ ] Detecting Player 1 and Player 2 having Burst available
 	- [ ] Detecting the amount of meter/tension each player has at the time
+- [ ] Extracting and storing images of player names from stream broadcast overlays
 	
 ### Long Term
 - [ ] Implement Tool using a framework capable of parallelization of processing (i.e. Spark)
