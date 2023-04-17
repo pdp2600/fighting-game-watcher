@@ -63,8 +63,7 @@ baiken_templ_imgs =  {'Name': 'Baiken',
                       'img_objs': {}
                      }
 bedman_templ_imgs =  {'Name': 'Bedman', 
-					   'Min_Portrait_Match': 0.25, 
-					   'Min_Win_Pose_Match': 0.3, 
+					   'Min_Portrait_Match': 0.25, 'Min_Win_Pose_Match': 0.3, 
                        'img_paths': {
 									 '1P_Portrait': template_img_folder +  
                                        'Characters\\Bedman\\Bedman_Portrait_P1.png', 
@@ -482,7 +481,7 @@ starter_ender_img_dicts_ls = [round_starter_templ_imgs, round_ender_templ_imgs,
 							  ]
 #Used in layered_extract_and_aggregate_video, "in_round" 2nd phase template match
 char_templ_img_dicts_ls = [anji_templ_imgs, axl_templ_imgs, baiken_templ_imgs, 
-                           bedman_templ_imgs,bridget_templ_imgs, chipp_templ_imgs, 
+                           bedman_templ_imgs, bridget_templ_imgs, chipp_templ_imgs, 
 						   faust_templ_imgs, giovanna_templ_imgs, goldlewis_templ_imgs, 
 						   happy_templ_imgs, ino_templ_imgs, jacko_templ_imgs, 
 						   ky_templ_imgs, leo_templ_imgs, may_templ_imgs, 
