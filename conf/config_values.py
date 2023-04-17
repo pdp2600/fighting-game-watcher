@@ -62,8 +62,24 @@ baiken_templ_imgs =  {'Name': 'Baiken',
                                   }, 
                       'img_objs': {}
                      }
+bedman_templ_imgs =  {'Name': 'Bedman', 
+					   'Min_Portrait_Match': 0.25, 
+					   'Min_Win_Pose_Match': 0.3, 
+                       'img_paths': {
+									 '1P_Portrait': template_img_folder +  
+                                       'Characters\\Bedman\\Bedman_Portrait_P1.png', 
+                                      '2P_Portrait': template_img_folder + 
+                                       'Characters\\Bedman\\Bedman_Portrait_P2.png'
+                                     #'Win_Pose_Left': template_img_folder + 
+                                     #  'Characters\\Bedman\\Bedman_Win_Pose_Left.png', 
+                                     #'Win_Pose_Right': template_img_folder + 
+                                     #  'Characters\\Bedman\\Bedman_Win_Pose_Right.png'
+                                  }, 
+                      'img_objs': {}
+                     }
 bridget_templ_imgs =  {'Name': 'Bridget', 
-					   'Min_Portrait_Match': 0.25, 'Min_Win_Pose_Match': 0.3, 
+					   'Min_Portrait_Match': 0.25, 
+					   'Min_Win_Pose_Match': 0.3, 
                        'img_paths': {
 									 '1P_Portrait': template_img_folder +  
                                        'Characters\\Bridget\\Bridget_Portrait_P1.png', 
@@ -449,10 +465,10 @@ templ_img_min_val_mappings = {'1P_Portrait': 'Min_Portrait_Match',
 #Used in brute_force_extract_and_aggregate_video, all the template dicts to match/check 
 #every frame in a single template match pass
 templ_img_dicts_ls = [anji_templ_imgs, axl_templ_imgs, baiken_templ_imgs, 
-					  bridget_templ_imgs, chipp_templ_imgs, faust_templ_imgs, 
-					  giovanna_templ_imgs, goldlewis_templ_imgs, happy_templ_imgs, 
-					  ino_templ_imgs, jacko_templ_imgs, ky_templ_imgs, leo_templ_imgs, 
-					  may_templ_imgs, millia_templ_imgs, nago_templ_imgs, 
+                      bedman_templ_imgs, bridget_templ_imgs, chipp_templ_imgs, 
+					  faust_templ_imgs, giovanna_templ_imgs, goldlewis_templ_imgs, 
+					  happy_templ_imgs, ino_templ_imgs, jacko_templ_imgs, ky_templ_imgs, 
+					  leo_templ_imgs, may_templ_imgs, millia_templ_imgs, nago_templ_imgs, 
 					  potemkin_templ_imgs, ramlethal_templ_imgs, sin_templ_imgs, 
 					  sol_templ_imgs, testament_templ_imgs, zato_templ_imgs, 
 					  round_starter_templ_imgs, round_ender_templ_imgs, 
@@ -466,13 +482,13 @@ starter_ender_img_dicts_ls = [round_starter_templ_imgs, round_ender_templ_imgs,
 							  ]
 #Used in layered_extract_and_aggregate_video, "in_round" 2nd phase template match
 char_templ_img_dicts_ls = [anji_templ_imgs, axl_templ_imgs, baiken_templ_imgs, 
-						   bridget_templ_imgs, chipp_templ_imgs, faust_templ_imgs, 
-						   giovanna_templ_imgs, goldlewis_templ_imgs, happy_templ_imgs, 
-						   ino_templ_imgs, jacko_templ_imgs, ky_templ_imgs, 
-						   leo_templ_imgs, may_templ_imgs, millia_templ_imgs, 
-						   nago_templ_imgs, potemkin_templ_imgs, ramlethal_templ_imgs, 
-						   sin_templ_imgs, sol_templ_imgs, testament_templ_imgs, 
-						   zato_templ_imgs
+                           bedman_templ_imgs,bridget_templ_imgs, chipp_templ_imgs, 
+						   faust_templ_imgs, giovanna_templ_imgs, goldlewis_templ_imgs, 
+						   happy_templ_imgs, ino_templ_imgs, jacko_templ_imgs, 
+						   ky_templ_imgs, leo_templ_imgs, may_templ_imgs, 
+						   millia_templ_imgs, nago_templ_imgs, potemkin_templ_imgs, 
+						   ramlethal_templ_imgs, sin_templ_imgs, sol_templ_imgs, 
+						   testament_templ_imgs, zato_templ_imgs
 						   ]
 #Was used in layered_extract_and_aggregate_video combined w/ the character ls, but got 
 #moved to the starter/ender 1st phase template match

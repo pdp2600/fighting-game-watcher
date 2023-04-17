@@ -457,7 +457,7 @@ Game result/data accuracy, usually is very good, but on the Round level things c
 - [ ] Add Template Images & Configuration for new Season 2 Characters
 	- [X] Bridget
 	- [X] Sin Kiske
-	- [ ] Character 3 (Coming March 2023)
+	- [X] Bedman
 	- [ ] Character 4 (Coming May 2023)
 - [ ] Enable Usage of Videos with Resoloutions Different than 1992x1080
 	- [ ] Allow for Higher res videos - Scale down Frames to 1992x1080
